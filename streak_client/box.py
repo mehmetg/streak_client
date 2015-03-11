@@ -14,9 +14,13 @@ class Box(StreakBase):
 				'followerKeys': None,
 				'boxKey':  None
 		}
-		self._parse_init_args(kwargs)
+		self._parse_init_args(**kwargs)
 		#this needs to happen here for the _parse_init_args to work properly.
 		self.api_uri = api_uri
+
+	def __str__(self):
+		return str(self.__dict__)
+
 
 	def create(self):
 		print(json.dumps(self.attributes))
@@ -28,5 +32,6 @@ class Box(StreakBase):
 def main():
 	b = Box("h", name  = "alli", followerKeys = ['alie', 'eblia'], notes = 'ss', stageKey = 'a',\
 				fields = ['a', 'b'], boxKey  = 'aed' )
+	print(b)
 if __name__ == '__main__':
 	main()

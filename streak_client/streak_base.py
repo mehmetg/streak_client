@@ -1,4 +1,5 @@
-debug = 1
+import requests, json, sys
+
 
 class StreakBase(object):
 
@@ -11,15 +12,13 @@ class StreakBase(object):
 	def delete(self):
 		raise NotImplementedError(self.__class__)
 
-	def _parse_init_args(self, kwargs):
-		for key in self.attributes:
+
+	def _parse_init_args(self, **kwargs):
+		#print("args", kwargs)
+		#print("attr:", self.attributes)
+		for key in kwargs:
 			try:
-				self.__dict__[key] = kwargs[key]
-			except KeyError as ke:
-				print("Initialization requires the following keys to have valid values:\n" +\
-						', '.join((key for key in self.attributes)))
-				print("Key: '{}'' not found!".format(key))
-				raise ke
-				
-		if debug:
-			print(self.__dict__)
+				self.attributes[key] = kwargs[key]
+			except KeyError:
+				#should never happen now"
+				pass
