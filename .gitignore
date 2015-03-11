@@ -52,3 +52,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+#private key file
+STREAK_API_KEY.txt
