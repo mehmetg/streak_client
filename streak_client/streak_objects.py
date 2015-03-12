@@ -3,7 +3,7 @@ class StreakBaseObject(object):
 
 	def __init__(self, **kwargs):
 		if kwargs:
-			#print(self.__class__)
+			print(self.__class__)
 			self.attributes = {}
 			self.attributes.update(**kwargs)
 		else:
@@ -25,8 +25,9 @@ class StreakBaseObject(object):
 						disp_attr[key] = None
 			pprint(disp_attr)
 
-	def to_dict(self):
-		return {k:v for (k,v) in self.attributes.iteritems() if v is not None}
+	def to_dict(self, rw = False):
+		return {k:v for (k,v) in self.attributes.iteritems() 
+				if (v is not None and (not rw or (k in self.rw_attr_keys)))}
 class StreakUser(StreakBaseObject):
 	disp_attr_keys =	[
 						'email',
@@ -35,7 +36,8 @@ class StreakUser(StreakBaseObject):
 						'isOauthComplete',
 						'displayName'
 						]
-		
+	rw_attr_keys =		[
+						]
 class StreakPipeline(StreakBaseObject):
 	disp_attr_keys =	[
 						'creatorKey',
@@ -46,6 +48,14 @@ class StreakPipeline(StreakBaseObject):
 						'stages',
 						'stageOrder',
 						'aclEntries',
+						'owner',
+						'pipelineKey'
+						]
+	rw_attr_keys =		[
+						'name',
+						'description',
+						'orgWide',
+						'stageOrder'
 						'owner'
 						]
 
@@ -64,9 +74,16 @@ class StreakBox(StreakBaseObject):
 						'notes',
 						'stageKey',
 						'fields',
+						'followerKeys',
+						'boxKey'
+						]
+	rw_attr_keys =		[
+						'name',
+						'notes',
+						'stageKey',
+						'stageOrder',
 						'followerKeys'
 						]
-
 class StreakStage(StreakBaseObject):
 	disp_attr_keys =	[
 						'pipelineKey',
