@@ -142,3 +142,4 @@ class StreakSnippet(StreakBaseObject):
 						'snippetType',
 						'key'
 						]
+	rw_attr_keys = []

@@ -371,18 +371,27 @@ class StreakClient(StreakClientBaseObject):
 		Args:
 			return		(status code, snippets as list(dicts))
 		'''
-		return self._req('get', self.snippet_root_uri)
+		code, data =   self._req('get', self.snippet_root_uri)
 		
+		self._parse_req(code)
+
+		return code, data
+
 	def get_snippet(self, key):
 		'''Get specific snippet by its key
 		Args:
 			key			snippet key
 			return		(status code, snippet dict)
 		''' 	
-		if kw:
-			return self._req('get', self.snippet_root_uri + '/' + key)
-		else:
+		if not key:
 			return requests.codes.bad_request, None
+
+		code, data =  self._req('get', self.snippet_root_uri + '/' + key)
+		
+		self._parse_req(code)
+
+		return code, data
+			
 		
 
 
@@ -477,6 +486,18 @@ def main():
 	code, data = s_client.delete_box(o.to_dict()['boxKey'])
 	print(data)
 	'''
+	print("---ALL SNIPPETS---")
+	code, data = s_client.get_snippets()
+	for item in data:
+		o = StreakSnippet(**item)
+		o.show()
+		print("---------")
+	print("---ONE SNIPPET---")
+	code, data = s_client.get_snippet("sss")
+	if(code == 200):
+		o = StreakSnippet(**item)
+		o.show()
+	print("---------")
 	
 if __name__ == '__main__':
 	main()
