@@ -8,6 +8,7 @@ class Pipeline(StreakBase):
 		self.root_uri = api_uri + '/pipelines'
 		#using a dictionary for easy json conversion and seperation 
 		#from internals
+		#only lists the ones neede/recommended for creation
 		self.attributes = {
 			'name' : None,
 			'description' : None,
@@ -28,6 +29,8 @@ class Pipeline(StreakBase):
 		print(self.__dict__)
 		
 		self.uri = self.root_uri + '/' + self.attributes['pipelineKey']
+		
+
 		self.api_auth = client_auth
 
 	def __str__(self):

@@ -1,10 +1,9 @@
 import json
-import requests
-from pipeline import Pipeline
+from streak_base import StreakBase
 debug = 0
 #
 #
-class StreakClient(object):
+class StreakClient(StreakBase):
 	'''Specified basics for the Streak API Client
 	Attr:
 		api_protocol		protocol to use
@@ -12,6 +11,7 @@ class StreakClient(object):
 		api_version			api version
 		api_auth 			http auth tuple with api key to be used by the client (instance only)
 		api_uri 			complete api uri (instance only)
+		******
 		pipeline_root_uri	uri to the pipelines root.
 		pipelines			list of pipeline objects for the user
 							pipeline is a shallow object has only names for members
@@ -19,9 +19,7 @@ class StreakClient(object):
 		req 				last http request performed (debug/devel purposes)
 	'''
 
-	api_protocol = 'https'
-	api_base_uri = 'www.streak.com/api'
-	api_version = 'v1'
+	
 	
 	def __init__(self, my_api_key):
 		'''Initializes an instance of the class with an api key
@@ -29,16 +27,13 @@ class StreakClient(object):
 		Args:
 			my_api_key	api key for this instance
 		'''
-		self.api_auth = (my_api_key, '')
-		#consolidate attributes and build the URI
-		all_attributes = self.__class__.__dict__.copy()
-		all_attributes.update(self.__dict__)
-
-		self.api_uri = "%(api_protocol)s://%(api_base_uri)s/%(api_version)s" \
-						% all_attributes
+		super(StreakClient, self).__init__(my_api_key)
 
 		self.pipeline_root_uri = self.api_uri + "/pipelines"
-		self.pipelines = []
+		self.box_root_uri = self.api_uri + "/boxes"
+		self.search_uri = self.api_uri + "?query="
+		self.snippet_root_uri = self.api_uri + "/snippets" 
+		
 		
 		if debug:
 			print(self.api_uri)
@@ -48,48 +43,61 @@ class StreakClient(object):
 		To go deeper individual pipelines need to be polled for their contents.
 		This is a directory for what we could ask for.
 		Args:
-			returns 	status code for the GET request.
+			returns 	(status code for the GET request, dict of pipelines)
 		'''
-		self.req = requests.get(self.pipeline_root_uri, auth = self.api_auth)
-		if self.req.status_code == requests.codes.ok:
-			pipelines = r.json()
-			self.pipelines = []
-			for pipeline in pipelines:
-				self.pipelines.append(Pipeline(self.api_uri, self.api_auth, pipeline))
-		else:
-			pass
+		return self._req('get', self.pipeline_root_uri)
 
-		return self.req.status_code
-
-	def get_whoami(self):
-		'''Get whoami information from the server and update the attribute
+	def get_boxes(self):
+		'''Gets a list of all pipeline objects. Performs a single GET.
+		To go deeper individual boxes need to be polled for their contents.
+		This is a directory for what we could ask for.
 		Args:
-			return		status code for the get request
-		''' 	
-		my_uri = self.api_uri + "/users/me"
+			returns 	(status code for the GET request, dict of boxes) 
+		'''
+		return self._req('get', self.box_root_uri)
 
-		self.req = requests.get(my_uri, auth=self.api_auth)
-		if(self.req.status_code == requests.codes.ok):
-			self.whoami = self.req.json()
+
+	def get_user(self, ID=None):
+		'''Get user information from the server and update the attribute
+		Args:
+			ID			user ID (default: me)
+			return		(status code for the get request, dict user data)
+		''' 	
+		if ID:
+			t_uri = self.api_uri + "/users/" + ID
 		else:
-			print("Failed with code: {}".format(r.status_code))
-			self.whoami = None
-		
-		return self.req.status_code
+			t_uri = self.api_uri + "/users/me"
+
+		return self._req('get', t_uri)
+
+	def search(self, kw):
+		if kw:
+			return self._get(self.search_uri + kw)
+		else:
+			return requests.codes.bad_request, None
+
+	def get_snippets(self):
+		return self._req('get', self.snippet_root_uri)
+	
+	def get_snippet(self, key):
+		return self._req('get', self.snippet_root_uri + '/' + key)
+
 
 ############
 ############
 def main():
 	"""Code to run simple demo commands"""
 	key = ''
-	with open('../STREAK_API_KEY.txt','r') as f:
+	with open('/Volumes/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
 		key = f.read().strip()
+	
+	sb = StreakBase('aa')
 
 	s_client = StreakClient(key)
 	#print(s_client.whoami())
 	print('--------')
-	s_client.get_pipelines()
-	print(s_client.pipelines)
+	
+	print(s_client.get_boxes())
 
 
 if __name__ == '__main__':
