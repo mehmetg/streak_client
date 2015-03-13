@@ -2,7 +2,7 @@ import json, requests
 from streak_objects import *
 
 import requests
-DEBUG = 1
+DEBUG = 0
 
 class StreakClientBaseObject(object):
 	'''Specified basics for the Streak API Client
@@ -96,7 +96,7 @@ class StreakClient(StreakClientBaseObject):
 		Args:
 			my_api_key	api key for this instance
 		'''
-		super(StreakClient, self).__init__(my_api_key)
+		super(self.__class__, self).__init__(my_api_key)
 
 		self.sort_by_postfix = '?sortBy='
 		self.boxes_suffix = 'boxes'
@@ -852,6 +852,7 @@ class StreakClient(StreakClientBaseObject):
 						])
 		return self._req('get', uri)
 ############
+#Temporary test routines.
 ############
 def user_api_test(s_client):
 	code, user_data = s_client.get_user()
@@ -1201,6 +1202,7 @@ def box_reminder_api_test(s_client):
 			print("------------------")
 	raw_input()
 ############
+#Main as temporary test runner
 ############
 def main():
 	"""Code to run simple demo commands"""
