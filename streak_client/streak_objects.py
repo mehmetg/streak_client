@@ -112,10 +112,16 @@ class StreakReminder(StreakBaseObject):
 						'creatorKey',
 						'creationDate',
 						'remindDate',
+						'remindFollowers',
 						'message',
-						'status'
+						'status',
+						'reminderKey'
 						]
-	rw_attr_keys = 		[]
+	rw_attr_keys = 		[
+						'remindFollowers',
+						'remindDate',
+						'message'
+						]
 
 class StreakFile(StreakBaseObject):
 	disp_attr_keys =	[
@@ -123,7 +129,9 @@ class StreakFile(StreakBaseObject):
 						'size',
 						'mimeType',
 						'fileName',
-						'mainFileName'
+						'mainFileName',
+						'fileKey',
+						'boxKey'
 						]
 	rw_attr_keys = 		[]
 

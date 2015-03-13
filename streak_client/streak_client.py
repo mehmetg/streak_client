@@ -108,6 +108,10 @@ class StreakClient(StreakClientBaseObject):
 		self.newsfeed_suffix = 'newsfeed'
 		self.threads_suffix = 'threads'
 		self.comments_suffix = 'comments'
+		self.files_suffix = 'files'
+		self.file_contents_suffix = 'contents'
+		self.file_link_suffix = 'link'
+		self.reminders_suffix = 'reminders'
 		self.detail_level_suffix = '?detailLevel='
 
 		self.pipeline_root_uri = self.api_uri + '/' + self.pipelines_suffix
@@ -715,6 +719,7 @@ class StreakClient(StreakClientBaseObject):
 		code, r_data = self._req('put', uri, new_cmt.to_dict())
 		
 		return code, r_data
+	
 	def get_box_comments(self, box_key):
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix,
@@ -722,6 +727,7 @@ class StreakClient(StreakClientBaseObject):
 						self.comments_suffix
 						])
 		return self._req('get', uri)
+	
 	def delete_box_comment(self, box_key, comment_key):
 		raise Exception("Not supported yet! Or not documented!")
 		uri = '/'.join([self.api_uri,
@@ -731,6 +737,120 @@ class StreakClient(StreakClientBaseObject):
 						comment_key
 						])
 		return self._req('delete', uri)
+	###
+	#Reminder Methods
+	###
+	def create_box_reminder(self, box_key, message, remind_date, remind_follwers, **kwargs):
+		'''Creates a reminder with the provided attributes.
+		Args:
+			box_key 		specifying the box to add the field to
+			message			message for the reminder
+			remind_date		date to remind on in ticks.
+			remind_follwers true/false
+			kwargs			{}
+			return			(status code, reminder dict)
+		'''
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix, 
+						box_key,
+						self.reminders_suffix
+						])
+		kwargs.update({	'message':message, 
+						'remindDate':remind_date, 
+						'remindFollowers': remind_follwers})
+
+		new_rem = StreakReminder(**kwargs)
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		code, data = self._req('put', uri, new_rem.to_dict(rw = True))
+		
+		return code, data	
+
+	def update_reminder(self, reminder):
+		'''Creates a reminder with the provided attributes.
+		Args:
+			reminder		updated reminder of StreakReminder type
+			return			(status code, reminder dict)
+		'''
+		uri = '/'.join([self.api_uri,
+						self.reminders_suffix,
+						])
+		#req sanity check
+
+		payload = None
+		if  type(reminder) is not StreakReminder:
+			return requests.codes.bad_request, None
+
+		payload = reminder.to_dict(rw = True)
+	
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		try:
+			uri = '/'.join([uri, reminder.attributes['key']])
+		except KeyError:
+			return requests.codes.bad_request, None
+	
+		code, data = self._req('post', uri , json.dumps(payload))
+		
+		return code, data
+
+	def get_box_reminders(self, box_key):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix, 
+						box_key,
+						self.reminders_suffix
+						])
+
+		return self._req('get', uri)
+
+	def get_reminder(self, reminder_key):
+		uri = '/'.join([self.api_uri,
+						self.reminders_suffix,
+						reminder_key
+						])
+		return self._req('get', uri)
+
+	def delete_reminder(self, reminder_key):
+		uri = '/'.join([self.api_uri,
+						self.reminders_suffix,
+						reminder_key
+						])
+		return self._req('delete', uri)
+	###
+	#File Methods
+	###
+	def get_file(self, file_key):
+		uri = '/'.join([self.api_uri,
+						self.files_suffix,
+						file_key
+						])
+		return self._req('get', uri)
+	
+	def get_file_contents(self, file_key):
+		uri = '/'.join([self.api_uri,
+						self.files_suffix,
+						file_key,
+						self.file_contents_suffix,
+						])
+		return self._req('get', uri)
+	
+	def get_file_link(self, file_key):
+		uri = '/'.join([self.api_uri,
+						self.files_suffix,
+						file_key,
+						self.file_link_suffix,
+						])
+		return self._req('get', uri)
+
+	def get_box_files(self, box_key):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.files_suffix
+						])
+		return self._req('get', uri)
 ############
 ############
 def user_api_test(s_client):
@@ -936,7 +1056,6 @@ def box_field_api_test(s_client):
 			o.show()
 			print("------------------")
 	raw_input()
-	return
 	print("---ONE FIELD---")
 	code, data = s_client.get_box_field(box_key, o.attributes['key'])
 	if(code == 200):
@@ -1004,7 +1123,83 @@ def comments_api_test(s_client):
 			#code, data = s_client.delete_box_comment(o.attributes['boxKey'], o.attributes['key'])
 			#pprint(data)
 			print("------------------------")
-
+def files_api_test(s_client):
+	box_key = 'agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	print("---GET BOX FILES---")
+	code, data = s_client.get_box_files(box_key)
+	if code == 200:
+		for item in data:
+			o = StreakFile(**item)
+			o.show()
+			#print(o.attributes['boxKey'], o.attributes['key'])
+			#print("---DELETE BOX COMMENT---")
+			#code, data = s_client.delete_box_comment(o.attributes['boxKey'], o.attributes['key'])
+			#pprint(data)
+			print("------------------------")
+	print("---GET FILE---")
+	code, data = s_client.get_file(o.attributes['fileKey'])
+	if code == 200:
+		o = StreakFile(**data)
+		o.show()
+	print("------------------------")
+	print("---GET FILE LINK---")
+	code, data = s_client.get_file_link(o.attributes['fileKey'])
+	pprint(data)
+	print("------------------------")
+	print("---GET FILE CONTENTS---")
+	code, data = s_client.get_file_contents(o.attributes['fileKey'])
+	pprint(data)
+	print("------------------------")
+def box_reminder_api_test(s_client):
+	import time
+	box_key ='agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	print('---ONE BOX, CREATE REMINDER---')
+	code, data = s_client.create_box_reminder(box_key, 'hai!', str(int(time.time())+100000), True)
+	if(code == 200):
+		o = StreakReminder(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, CREATE REMINDER---')
+	code, data = s_client.create_box_reminder(box_key, 'Moo!', str(int(time.time())+200000), False)
+	if(code == 200):
+		o = StreakReminder(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, ALL REMINDERS---')
+	code, data = s_client.get_box_reminders(box_key)
+	if(code == 200):
+		for item in data:
+			o = StreakReminder(**item)
+			o.show()
+			print("------------------")
+	raw_input()
+	print("---ONE REMINDER---")
+	code, data = s_client.get_reminder(o.attributes['reminderKey'])
+	if(code == 200):
+		o = StreakReminder(**data)
+		o.show()
+	print("------------------")
+	print("---UPDATE REMINDER---")
+	o.attributes['message'] = "updated!"
+	code, data = s_client.update_reminder(o)
+	if(code == 200):
+		o = StreakReminder(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, DELETE ALL REMINDERS---')
+	code, data = s_client.get_box_reminders(box_key)
+	if(code == 200):
+		for item in data:
+			o = StreakField(**item)
+			o.show()
+			print("---Delete Reminder---")
+			code, data = s_client.delete_reminder(o.attributes['reminderKey'])
+			pprint(data)
+			print("------------------")
+	raw_input()
 ############
 ############
 def main():
@@ -1015,7 +1210,7 @@ def main():
 	
 	s_client = StreakClient(key)
 	print('key', key)
-	comments_api_test(s_client)
+	box_reminder_api_test(s_client)
 	
 
 if __name__ == '__main__':
