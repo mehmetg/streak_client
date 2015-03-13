@@ -34,7 +34,8 @@ class StreakUser(StreakBaseObject):
 						'lowercaseEmail',
 						'lastSeenTimestamp',
 						'isOauthComplete',
-						'displayName'
+						'displayName',
+						'userKey'
 						]
 	rw_attr_keys =		[
 						]
@@ -67,6 +68,7 @@ class StreakACLEntry(StreakBaseObject):
 						'isOwner',
 						'image'
 						]
+	rw_attr_keys =		[]
 
 class StreakBox(StreakBaseObject):
 	disp_attr_keys =	[
@@ -86,15 +88,23 @@ class StreakBox(StreakBaseObject):
 						]
 class StreakStage(StreakBaseObject):
 	disp_attr_keys =	[
-						'pipelineKey',
-						'stageKey'
+						'name',
+						'key',
+						'pipelineKey'
+						]
+	rw_attr_keys = 		[
+						'name'
 						]
 
 class StreakField(StreakBaseObject):
 	disp_attr_keys =	[
-						'TEXT_INPUT',
-						'PERSON',
-						'DATE'
+						'name',
+						'key',
+						'type'
+						]
+	rw_attr_keys = 		[
+						'name',
+						'type'
 						]
 
 class StreakReminder(StreakBaseObject):
@@ -105,6 +115,7 @@ class StreakReminder(StreakBaseObject):
 						'message',
 						'status'
 						]
+	rw_attr_keys = 		[]
 
 class StreakFile(StreakBaseObject):
 	disp_attr_keys =	[
@@ -114,6 +125,7 @@ class StreakFile(StreakBaseObject):
 						'fileName',
 						'mainFileName'
 						]
+	rw_attr_keys = 		[]
 
 class StreakThread(StreakBaseObject):
 	disp_attr_keys =	[
@@ -122,14 +134,23 @@ class StreakThread(StreakBaseObject):
 						'emailAddresses',
 						'lastEmailTimestamp',
 						'threadGmailId',
-						'files'
+						'files',
+						'key'
 						]
+	rw_attr_keys = 		[]
 
 class StreakComment(StreakBaseObject):
 	disp_attr_keys =	[
+						'pipelineKey',
+						'boxKey',
 						'message',
 						'timestamp',
 						'creatorKey'
+						'commentKey',
+						'key'
+						]
+	rw_attr_keys = 		[
+						'message'
 						]
 
 class StreakSnippet(StreakBaseObject):
@@ -142,4 +163,4 @@ class StreakSnippet(StreakBaseObject):
 						'snippetType',
 						'key'
 						]
-	rw_attr_keys = []
+	rw_attr_keys =		[]

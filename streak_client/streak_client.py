@@ -39,7 +39,7 @@ class StreakClientBaseObject(object):
 				return requests.put, {'Content-Type': 'application/x-www-form-urlencoded'}
 			if op == 'post':
 				return requests.post, {'Content-Type': 'application/json'}
-			if op == 'del':
+			if op == 'delete':
 				return requests.delete, None
 		else:
 			raise NotImplementedError('Operation {} is not supported!'.format(op))
@@ -49,7 +49,7 @@ class StreakClientBaseObject(object):
 			print('uri', uri)
 
 		req_fp, content_type = self._get_req_fp(op)
-
+		
 		if payload:
 			if content_type:
 				r = req_fp(uri, payload, auth = self.api_auth, headers = content_type)
@@ -57,7 +57,7 @@ class StreakClientBaseObject(object):
 				r = req_fp(uri, payload, auth = self.api_auth)
 		else:
 			r = req_fp(uri, auth = self.api_auth)
-
+		
 		if r.status_code == requests.codes.ok:
 			data = r.json()
 		else:
@@ -65,11 +65,9 @@ class StreakClientBaseObject(object):
 			pass
 		#keep for debugging 
 
-		if DEBUG:
-			self.req = r
-			print(payload)
-			print(uri)
-			#print(self.req.)
+		#in case there's an error and we're debugging
+		self._parse_req(r)
+
 		return r.status_code, data
 	
 	def _form_encode(self, **kwargs):
@@ -92,8 +90,6 @@ class StreakClient(StreakClientBaseObject):
 		req 				last http request performed (debug/devel purposes)
 	'''
 
-	
-	
 	def __init__(self, my_api_key):
 		'''Initializes an instance of the class with an api key
 		Allows multiple instances with distinct keys.
@@ -101,23 +97,37 @@ class StreakClient(StreakClientBaseObject):
 			my_api_key	api key for this instance
 		'''
 		super(StreakClient, self).__init__(my_api_key)
-		self.pipeline_root_uri = self.api_uri + "/pipelines"
-		self.box_root_uri = self.api_uri + "/boxes"
-		self.search_uri = self.api_uri + "/search?query="
-		self.snippet_root_uri = self.api_uri + "/snippets" 
+
 		self.sort_by_postfix = '?sortBy='
-		self.boxes_suffix = '/boxes'
-		
+		self.boxes_suffix = 'boxes'
+		self.stages_suffix = 'stages'
+		self.pipelines_suffix = 'pipelines'
+		self.search_suffix = 'search?query='
+		self.snippets_suffix = 'snippets'
+		self.fields_suffix = 'fields'
+		self.newsfeed_suffix = 'newsfeed'
+		self.threads_suffix = 'threads'
+		self.comments_suffix = 'comments'
+		self.detail_level_suffix = '?detailLevel='
+
+		self.pipeline_root_uri = self.api_uri + '/' + self.pipelines_suffix
+		self.box_root_uri = self.api_uri + '/' + self.boxes_suffix
+		self.search_uri = self.api_uri + '/' + self.search_suffix
+		self.snippet_root_uri = self.api_uri + '/' + self.snippets_suffix
+
 		if DEBUG:
 			print(self.api_uri)
 
-	def _parse_req(self, code):
+	###
+	#Private Utility Methods
+	###
+	def _parse_req(self, req):
 		if DEBUG:
-			if code != 200:
-				print("code: {}".format(code))
-				print("response {}".format(self.req.json()))
-				print("req headers {}".format(self.req.request.headers))
-				print("req body {}".format(self.req.request.body))
+			if req.status_code != requests.codes.ok:
+				print("code: {}".format(req.status_code))
+				print("response {}".format(req.json()))
+				print("req headers {}".format(req.request.headers))
+				print("req body {}".format(req.request.body))
 	###
 	#Pipeline Methods
 	###
@@ -130,7 +140,7 @@ class StreakClient(StreakClientBaseObject):
 			returns 	(status code for the GET request, dict of pipelines)
 		'''
 		if sort_by:
-			uri = self.pipeline_root_uri + self.sort_by_postfix + sort_by
+			uri = self.pipeline_root_uri + '/' + self.sort_by_postfix + sort_by
 		else:
 			uri = self.pipeline_root_uri
 
@@ -156,7 +166,7 @@ class StreakClient(StreakClientBaseObject):
 		'''
 		if key:
 			uri = self.pipeline_root_uri + '/' + key
-			return self._req('del', uri)
+			return self._req('delete', uri)
 		else:
 			return requests.codes.bad_request, None
 
@@ -179,8 +189,6 @@ class StreakClient(StreakClientBaseObject):
 		#raw_input()
 		code, r_data = self._req('put', self.pipeline_root_uri, new_pl.to_dict())
 		
-		self._parse_req(code)
-			
 		return code, r_data
 	
 	def update_pipeline(self, pipeline):
@@ -206,10 +214,6 @@ class StreakClient(StreakClientBaseObject):
 			return requests.codes.bad_request, None
 	
 		code, r_data = self._req('post', uri , json.dumps(payload))
-		
-		#in case there's an error and we're debugging
-		self._parse_req(code)
-			
 
 		return code, r_data
 	###
@@ -224,7 +228,7 @@ class StreakClient(StreakClientBaseObject):
 			returns 	(status code for the GET request, dict of boxes) 
 		'''
 		if sort_by:
-			uri = self.box_root_uri + self.sort_by_postfix + sort_by
+			uri = self.box_root_uri + '/' + self.sort_by_postfix + sort_by
 		else:
 			uri = self.box_root_uri
 
@@ -258,10 +262,10 @@ class StreakClient(StreakClientBaseObject):
 		if not pipeline_key:
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + self.boxes_suffix
+		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.boxes_suffix
 		
 		if sort_by:
-			uri += self.sort_by_postfix + sort_by
+			uri +=  '/' + self.sort_by_postfix + sort_by
 		
 		return self._req('get', uri)
 
@@ -272,16 +276,16 @@ class StreakClient(StreakClientBaseObject):
 		'''
 		if key:
 			uri = self.box_root_uri + '/' + key
-			return self._req('del', uri)
+			return self._req('delete', uri)
 		else:
 			return requests.codes.bad_request, None
 
-	def create_box(self, pipeline_key, name, **kwargs):
+	def create_pipeline_box(self, pipeline_key, name, **kwargs):
 		'''Creates a pipeline with the provided attributes.
 		Args:
 			name	required name string
 			kwargs	{name, description, orgWide, aclEntries}
-			return	(status code, pipeline_dict)
+			return	(status code, box dict)
 		'''
 		#req sanity check
 		if not (pipeline_key and name):
@@ -297,10 +301,7 @@ class StreakClient(StreakClientBaseObject):
 		code, r_data = self._req('put', uri, new_box.to_dict(rw = True))
 		
 		#in case there's an error and we're debugging
-		self._parse_req(code)
 		
-			
-
 		return code, r_data
 	
 	def update_box(self, box):
@@ -326,10 +327,6 @@ class StreakClient(StreakClientBaseObject):
 			return requests.codes.bad_request, None
 	
 		code, r_data = self._req('post', uri , json.dumps(payload))
-		
-		#in case there's an error and we're debugging
-		self._parse_req(code)
-			
 
 		return code, r_data
 	###
@@ -362,10 +359,10 @@ class StreakClient(StreakClientBaseObject):
 
 		code, data = self._req('get', self.search_uri + kw)
 
-		self._parse_req(code+1)
-
 		return code, data
-
+	###
+	#Snippet Methods
+	###
 	def get_snippets(self):
 		'''Gets all snippets available.
 		Args:
@@ -373,8 +370,6 @@ class StreakClient(StreakClientBaseObject):
 		'''
 		code, data =   self._req('get', self.snippet_root_uri)
 		
-		self._parse_req(code)
-
 		return code, data
 
 	def get_snippet(self, key):
@@ -388,34 +383,367 @@ class StreakClient(StreakClientBaseObject):
 
 		code, data =  self._req('get', self.snippet_root_uri + '/' + key)
 		
-		self._parse_req(code)
+		return code, data
+	###
+	#Stage Methods
+	###
+	def get_pipeline_stages(self, pipeline_key):
+		'''Gets a list of all stage objects. Performs a single GET.
+		To go deeper individual boxes need to be polled for their contents.
+		This is a directory for what we could ask for.
+		Args:
+			pipeline_key	key for pipeline
+			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
+			returns 		(status code for the GET request, dict of stages) 
+		'''
+		if not pipeline_key:
+			return requests.codes.bad_request, None
+
+		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix
+		
+		code, data = self._req('get', uri)
+
+		return code, data.values()
+		
+	def get_pipeline_stage(self, pipeline_key, stage_key, sort_by = None):
+		'''Gets a list of all stage objects. Performs a single GET.
+		To go deeper individual boxes need to be polled for their contents.
+		This is a directory for what we could ask for.
+		Args:
+			pipeline_key	key for pipeline
+			stage_key		key for stage
+			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
+			returns 		(status code for the GET request, dict of stages) 
+		'''
+		if not (pipeline_key and stage_key):
+			return requests.codes.bad_request, None
+
+		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix + '/' + stage_key
+		
+		code, data = self._req('get', uri)
 
 		return code, data
-			
+
+	def create_pipeline_stage(self, pipeline_key, name, **kwargs):
+		'''Creates a pipeline with the provided attributes.
+		Args:
+			name	required name string
+			kwargs	{name, description, orgWide, aclEntries}
+			return	(status code, stage dict)
+		'''
+		#req sanity check
+		if not (pipeline_key and name):
+			return requests.codes.bad_request, None
+
+		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix
+		kwargs.update({'name':name})
+
+		new_box = StreakStage(**kwargs)
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		code, data = self._req('put', uri, new_box.to_dict(rw = True))
 		
+		return code, data
+	
+	def delete_pipeline_stage(self, pipeline_key, stage_key, sort_by = None):
+		'''Deletes a stage in the pipeline by stage key and pipeline key
+		Args:
+			pipeline_key	key for pipeline
+			stage_key		key for stage
+			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
+			returns 		(status code for the GET request, dict of op report) 
+		'''
+		if not (pipeline_key and stage_key):
+			return requests.codes.bad_request, None
 
+		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix + '/' +stage_key
+		
+		code, data = self._req('delete', uri)
+		
+		return code, data
 
+	def update_pipeline_stage(self, stage):
+		'''Updates a box with the provided attributes.
+		Args:
+			pipeline_key	reqiured identifier for the pipeline
+			stage			StreakStage object
+			kwargs			{name}
+			return			(status code, stage dict)
+		'''
+		#req sanity check
+		payload = None
+		if  type(stage) is not StreakStage:
+			return requests.codes.bad_request, None
+
+		payload = stage.to_dict(rw = True)
+	
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		try:
+			uri = '/'.join([self.api_uri,
+							self.pipelines_suffix,
+							stage.attributes['pipelineKey'],
+							self.stages_suffix,
+							stage.attributes['key']
+							])
+		except KeyError:
+			return requests.codes.bad_request, None
+	
+		code, data = self._req('post', uri , json.dumps(payload))
+		
+		return code, data
+	###
+	#Newsfeed Methods
+	###
+	def _create_field(self, uri , name, field_type, **kwargs):
+		'''Creates a pipeline with the provided attributes.
+		Args:
+			uri		base uri for the field (pipeline or box uri)
+			name	required name string
+			field_type	required type string [TEXT_INPUT, DATE or PERSON]
+			kwargs	{}
+			return	(status code, field dict)
+		'''
+		#req sanity check
+		if not (name and (field_type in ['TEXT_INPUT', 'DATE', 'PERSON'])):
+			return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'name needs to be provided and field_type needs to be \'TEXT_INPUT\', \'DATE\' or \'PERSON\''}
+
+		kwargs.update({'name':name, 'type':field_type})
+
+		new_box = StreakField(**kwargs)
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		code, data = self._req('put', uri, new_box.to_dict(rw = True))
+		
+		return code, data
+
+	def _update_field(self, uri, field):
+		'''Updates a field with the provided attributes.
+		Args:
+			key	reqiured identifier for the pipeline or box
+			field			StreakField object
+			kwargs			{name, type}
+			return			(status code, field dict)
+		'''
+		#req sanity check
+		payload = None
+		if  type(field) is not StreakField:
+			return requests.codes.bad_request, None
+
+		payload = field.to_dict(rw = True)
+	
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		try:
+			uri = '/'.join([uri, field.attributes['key']])
+		except KeyError:
+			return requests.codes.bad_request, None
+	
+		code, data = self._req('post', uri , json.dumps(payload))
+		
+		return code, data
+
+	def get_pipeline_field(self, pipeline_key, field_key = None):
+		uri = '/'.join([self.api_uri, 
+						self.pipelines_suffix, 
+						pipeline_key, 
+						self.fields_suffix
+						])
+		if field_key:
+			uri = '/'.join([uri, field_key])
+
+		return self._req('get', uri)
+
+	def create_pipeline_field(self, pipeline_key, name, field_type, **kwargs):
+		'''Creates a pipeline with the provided attributes.
+		Args:
+			pipeline_key	specifying the pipeline to add the field to
+			name			required name string
+			field_type		required type string [TEXT_INPUT, DATE or PERSON]
+			kwargs			{}
+			return			(status code, field dict)
+		'''
+
+		uri = '/'.join([self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.fields_suffix
+						])
+		
+		code, data = self._create_field(uri, name, field_type, **kwargs)
+		
+		return code, data
+
+	def update_pipeline_field(self, pipeline_key, field):
+		uri = '/'.join([self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.fields_suffix
+						])
+		return self._update_field(uri, field)
+
+	def delete_pipeline_field(self, pipeline_key, field_key):
+		uri = '/'.join([self.api_uri,
+						self.pipelines_suffix, 
+						pipeline_key, 
+						self.fields_suffix, 
+						field_key
+						])
+		return self._req('delete', uri)
+
+	def create_box_field(self, box_key, name, field_type, **kwargs):
+		raise Exception("Not supported exception!")
+		'''Creates a pipeline with the provided attributes.
+		Args:
+			box_key 		specifying the box to add the field to
+			name			required name string
+			field_type		required type string [TEXT_INPUT, DATE or PERSON]
+			kwargs			{}
+			return			(status code, field dict)
+		'''
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix, 
+						box_key,
+						self.fields_suffix
+						])
+		
+		code, data = self._create_field(uri, name, field_type, **kwargs)
+		
+		return code, data
+
+	def update_box_field(self, box_key, field):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.fields_suffix
+						])
+		return self._update_field(uri, field)
+
+	def get_box_field(self, box_key, field_key = None):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.fields_suffix
+						])
+		if field_key:
+			uri = '/'.join([uri, field_key])
+
+		return self._req('get', uri)
+	
+	def delete_box_field(self, box_key, field_key):
+		uri = '/'.join([self.api_uri, 
+						self.boxes_suffix, 
+						box_key, 
+						self.fields_suffix, 
+						field_key
+						])
+		return self._req('delete', uri)
+	###
+	#Newsfeed Methods
+	###
+	def _get_newsfeeds(self, uri, detail_level = None):
+		if detail_level:
+			if detail_level not in ['ALL', 'CONDENSED']:
+				return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'detailLevel needs to be provided and field_type needs to be \'ALL\' or \'CONDENSED\''}
+			uri +=  self.detail_level_suffix + detail_level
+		return self._req('get', uri)
+
+	def get_pipeline_newsfeeds(self, pipeline_key, detail_level = None):
+		uri = '/'.join([self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.newsfeed_suffix
+						])
+		return self._get_newsfeeds(uri, detail_level)
+
+	def get_box_newsfeeds(self, box_key, detail_level = None):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.newsfeed_suffix
+						])
+		return self._get_newsfeeds(uri, detail_level)
+	###
+	#Thread Methods
+	###
+	def get_thread(self, thread_key):
+		uri = '/'.join([self.api_uri,
+						self.threads_suffix,
+						thread_key
+						])
+		return self._req('get', uri)
+
+	def get_box_threads(self, box_key):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.threads_suffix
+						])
+		return self._req('get', uri)
+	###
+	#Comment Methods
+	###
+	def create_box_comments(self, box_key, message, **kwargs):
+		'''Creates a pipeline with the provided attributes.
+		Args:
+			box_key			key for box
+			message			message string
+			kwargs			{}
+			return			(status code, comment dict)
+		'''
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.comments_suffix
+						])
+
+		if not (box_key and message):
+			return requests.codes.bad_request, None
+
+		kwargs.update({'message':message})
+
+		new_cmt = StreakComment(**kwargs)
+		#print(new_pl.attributes)
+		#print(new_pl.to_dict())
+		#raw_input()
+		code, r_data = self._req('put', uri, new_cmt.to_dict())
+		
+		return code, r_data
+	def get_box_comments(self, box_key):
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.comments_suffix
+						])
+		return self._req('get', uri)
+	def delete_box_comment(self, box_key, comment_key):
+		raise Exception("Not supported yet! Or not documented!")
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.comments_suffix,
+						comment_key
+						])
+		return self._req('delete', uri)
 ############
 ############
-def main():
-	"""Code to run simple demo commands"""
-	key = ''
-	with open('/Volumes/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
-		key = f.read().strip()
-	
-	s_client = StreakClient(key)
-	#print(s_client.whoami())
-	
-	
-	#print(s_client.get_boxes())
-	#print(s_client.get_pipelines())
-	'''
+def user_api_test(s_client):
 	code, user_data = s_client.get_user()
-	print('---USER---')
+	print('---ME---')
 	user = StreakUser(**user_data)
 	user.show()
-	
-	print('---Create PIPE---')
+	print('---USER BY ID---')
+	code, user_data = s_client.get_user(user.attributes['userKey'])
+	user = StreakUser(**user_data)
+	user.show()
+def pipeline_api_test(s_client):	
+	print('---Create PIPELINE---')
 	code, data = s_client.create_pipeline("1", "desc")
 	o = StreakPipeline(**data)
 	o.show()
@@ -429,23 +757,24 @@ def main():
 		o.show()
 		print("---------")
 	raw_input()
-	print('---Delete PIPE---')
+	print('---Delete PIPELINE---')
 	code, data = s_client.delete_pipeline(o.to_dict()['pipelineKey'])
 	print(data)
 	print("---------")
 	raw_input()
 	
-	print('---ALL PIPES---')
+	print('---GET ALL PIPELINES---')
 	code, data = s_client.get_pipelines()
 	for item in data:
 		o = StreakPipeline(**item)
 		o.show()
 		print("---------")
-	print('---ONE PIPE---')
+	print('---GET ONE PIPELINE---')
 	code, data = s_client.get_pipeline("agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIC5hAoM")
 	o = StreakPipeline(**data)
 	o.show()
 	print("---------")
+def box_api_test(s_client):
 	print('---ONE PIPE, ALL BOXES---')
 	code, data = s_client.get_pipeline_boxes("agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIC5hAoM")
 	for item in data:
@@ -469,12 +798,13 @@ def main():
 	o.show()
 	for i in xrange(5):
 		raw_input()
-		print('---Update PIPE---')
+		print('---Update BOX---')
 		o.attributes['name'] = str(int(o.attributes['name']) + 1)
 		code, data = s_client.update_box(o)
 		o = StreakBox(**data)
 		o.show()
 		print("---------")
+def search_api_test(s_client):
 	print("---Search BOXES---")
 	code, data = s_client.search("6")
 	for item in data['results']:
@@ -485,7 +815,7 @@ def main():
 	print("---Delete BOX---")
 	code, data = s_client.delete_box(o.to_dict()['boxKey'])
 	print(data)
-	'''
+def snippet_api_test(s_client):
 	print("---ALL SNIPPETS---")
 	code, data = s_client.get_snippets()
 	for item in data:
@@ -498,6 +828,195 @@ def main():
 		o = StreakSnippet(**item)
 		o.show()
 	print("---------")
+def stage_api_test(s_client):
+	print('---ONE PIPE, ALL STAGES---')
+	code, data = s_client.get_pipeline_stages("agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM")
+	raw_input()
+	for item in data:
+		o = StreakStage(**item)
+		o.show()
+		print("------------------")
+	print("---ONE STAGE---")
+	code, data = s_client.get_pipeline_stage('agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM', '5001')
+	pprint(data)
+	o = StreakStage(**data)
+	o.show()
+	print("------------------")
+	print("---Create STAGE---")
+	code, data = s_client.create_pipeline_stage('agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM', "1")
+	data.update({'pipelineKey':'agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM'})
+	o = StreakStage(**data)
+	o.show()
+	for i in xrange(5):
+		raw_input()
+		print("---Update STAGE---")
+		o.attributes['name'] = str(int(o.attributes['name']) + 1)
+		code, data = s_client.update_pipeline_stage(o)
+		data.update({'pipelineKey':'agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM'})
+		o = StreakStage(**data)
+		o.show()
+		print("------------------")
+	raw_input()
+	print("---Delete BOX---")
+	code, data = s_client.delete_pipeline_stage(o.attributes['pipelineKey'], o.attributes['key'])
+	print(data)
+def pipeline_field_api_test(s_client):
+	pipeline_key = 'agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM'
+	print('---ONE PIPE, CREATE FIELD---')
+	code, data = s_client.create_pipeline_field(pipeline_key, 'myField', 'TEXT_INPUT')
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE PIPE, CREATE FIELD---')
+	code, data = s_client.create_pipeline_field(pipeline_key, 'myField2', 'PERSON')
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE PIPE, ALL FIELDS---')
+	code, data = s_client.get_pipeline_field(pipeline_key)
+	if(code == 200):
+		for item in data:
+			o = StreakField(**item)
+			o.show()
+			print("------------------")
+	raw_input()
+	print("---ONE FIELD---")
+	code, data = s_client.get_pipeline_field(pipeline_key, o.attributes['key'])
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print("---UPDATE FIELD---")
+	for i in xrange(5):
+		o.attributes['name'] += str(i)
+		code, data = s_client.update_pipeline_field(pipeline_key, o)
+		if(code == 200):
+			o = StreakField(**data)
+			o.show()
+		print("------------------")
+	raw_input()
+	print('---ONE PIPE, DELETE ALL FIELDS---')
+	code, data = s_client.get_pipeline_field(pipeline_key)
+	if(code == 200):
+		for item in data:
+			o = StreakField(**item)
+			o.attributes['pipelineKey'] = pipeline_key
+			o.show()
+			print("---Delete FIELD---")
+			code, data = s_client.delete_pipeline_field(o.attributes['pipelineKey'], o.attributes['key'])
+			pprint(data)
+			print("------------------")
+	raw_input()
+def box_field_api_test(s_client):
+	box_key ='agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	print('---ONE BOX, CREATE FIELD---')
+	code, data = s_client.create_box_field(box_key, 'myField', 'TEXT_INPUT')
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, CREATE FIELD---')
+	code, data = s_client.create_box_field(box_key, 'myField2', 'PERSON')
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, ALL FIELDS---')
+	code, data = s_client.get_box_field(box_key)
+	if(code == 200):
+		for item in data:
+			o = StreakField(**item)
+			o.show()
+			print("------------------")
+	raw_input()
+	return
+	print("---ONE FIELD---")
+	code, data = s_client.get_box_field(box_key, o.attributes['key'])
+	if(code == 200):
+		o = StreakField(**data)
+		o.show()
+	print("------------------")
+	raw_input()
+	print('---ONE BOX, DELETE ALL FIELDS---')
+	code, data = s_client.get_box_field(box_key)
+	if(code == 200):
+		for item in data:
+			o = StreakField(**item)
+			o.attributes['boxKey'] = box_key
+			o.show()
+			print("---Delete FIELD---")
+			code, data = s_client.delete_box_field(o.attributes['pipelineKey'], o.attributes['key'])
+			pprint(data)
+			print("------------------")
+	raw_input()
+def newsfeed_api_test(s_client):
+	box_key = 'agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	pipeline_key = 'agxzfm1haWxmb29nYWVyOAsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIIV29ya2Zsb3cYgICAgIDyiAoM'
+	code, data = s_client.get_pipeline_newsfeeds(pipeline_key, "ALL")
+	pprint("ALL PIPELINE NEWSFEED: {}".format(data))
+	raw_input()
+	code, data = s_client.get_pipeline_newsfeeds(pipeline_key, "CONDENSED")
+	pprint("CONDENSED PIPELINE NEWSFEED: {}".format(data))
+	raw_input()
+	code, data = s_client.get_box_newsfeeds(box_key, "ALL")
+	pprint("ALL BOX NEWSFEED: {}".format(data))
+	raw_input()
+	code, data = s_client.get_box_newsfeeds(box_key, "CONDENSED")
+	pprint("CONDENSED BOX NEWSFEED: {}".format(data))
+def threads_api_test(s_client):
+	box_key = 'agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	print("---BOX THREADS---")
+	code, data = s_client.get_box_threads(box_key)
+	if code == 200:
+		for item in data:
+			o = StreakThread(**item)
+			o.show()
+			print("-------------")
+	print("---ONE THREAD---")
+	code, data = s_client.get_thread(o.attributes['key'])
+	if code == 200:
+		o = StreakThread(**data)
+		o.show()
+	print("-------------")
+def comments_api_test(s_client):
+	box_key = 'agxzfm1haWxmb29nYWVyLwsSDE9yZ2FuaXphdGlvbiIRbWVobWV0Z0BnbWFpbC5jb20MCxIEQ2FzZRjhxQgM'
+	print("---CREATE BOX COMMENT---")
+	code, data = s_client.create_box_comments(box_key, "Hello World!")
+	if code == 200:
+		o = StreakComment(**data)
+		o.show()
+	print("------------------------")
+	print("---GET BOX COMMENTS---")
+	code, data = s_client.get_box_comments(box_key)
+	if code == 200:
+		for item in data:
+			o = StreakComment(**item)
+			o.show()
+			#print(o.attributes['boxKey'], o.attributes['key'])
+			#print("---DELETE BOX COMMENT---")
+			#code, data = s_client.delete_box_comment(o.attributes['boxKey'], o.attributes['key'])
+			#pprint(data)
+			print("------------------------")
+
+############
+############
+def main():
+	"""Code to run simple demo commands"""
+	key = ''
+	with open('/Volumes/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
+		key = f.read().strip()
 	
+	s_client = StreakClient(key)
+	print('key', key)
+	comments_api_test(s_client)
+	
+
 if __name__ == '__main__':
 	main()
