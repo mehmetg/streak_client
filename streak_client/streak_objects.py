@@ -1,9 +1,16 @@
 from pprint import pprint
 class StreakBaseObject(object):
-
+	'''Base classes for ease of use while editing objects through the API
+	Attributes:
+		disp_attr_keys		attributes to be displayed (list of string keys)
+		rw_attr_keys		attributes we can edit server side (list of string keys)
+	'''
 	def __init__(self, **kwargs):
+		'''Initializes class attributes
+		Args:
+			kwargs			takes kwargs or a dict
+		'''
 		if kwargs:
-			print(self.__class__)
 			self.attributes = {}
 			self.attributes.update(**kwargs)
 		else:
@@ -11,6 +18,10 @@ class StreakBaseObject(object):
 			
 
 	def show(self, displayAll = False):
+		'''Prints relevant attributes of an object
+		Args:
+			displayAll		if True displays ALL class attributes.
+		'''
 		if displayAll:
 			pprint(self.attributes)
 		else:
@@ -26,6 +37,10 @@ class StreakBaseObject(object):
 			pprint(disp_attr)
 
 	def to_dict(self, rw = False):
+		'''Returns relevant attributes as a dict.
+		Args:
+			rw 			if True only returns the read/write enabled object attributes
+		'''
 		return {k:v for (k,v) in self.attributes.iteritems() 
 				if (v is not None and (not rw or (k in self.rw_attr_keys)))}
 class StreakUser(StreakBaseObject):
@@ -55,11 +70,10 @@ class StreakPipeline(StreakBaseObject):
 	rw_attr_keys =		[
 						'name',
 						'description',
-						'orgWide',
-						'stageOrder'
+						#'orgWide', #not writeable???
+						'stageOrder',
 						'owner'
 						]
-
 class StreakACLEntry(StreakBaseObject):
 	disp_attr_keys =	[
 						'fullName',
@@ -69,7 +83,6 @@ class StreakACLEntry(StreakBaseObject):
 						'image'
 						]
 	rw_attr_keys =		[]
-
 class StreakBox(StreakBaseObject):
 	disp_attr_keys =	[
 						'name',
@@ -95,7 +108,6 @@ class StreakStage(StreakBaseObject):
 	rw_attr_keys = 		[
 						'name'
 						]
-
 class StreakField(StreakBaseObject):
 	disp_attr_keys =	[
 						'name',
@@ -106,7 +118,6 @@ class StreakField(StreakBaseObject):
 						'name',
 						'type'
 						]
-
 class StreakReminder(StreakBaseObject):
 	disp_attr_keys =	[
 						'creatorKey',
@@ -122,7 +133,6 @@ class StreakReminder(StreakBaseObject):
 						'remindDate',
 						'message'
 						]
-
 class StreakFile(StreakBaseObject):
 	disp_attr_keys =	[
 						'fileOwner',
@@ -134,7 +144,6 @@ class StreakFile(StreakBaseObject):
 						'boxKey'
 						]
 	rw_attr_keys = 		[]
-
 class StreakThread(StreakBaseObject):
 	disp_attr_keys =	[
 						'subject',
@@ -146,7 +155,6 @@ class StreakThread(StreakBaseObject):
 						'key'
 						]
 	rw_attr_keys = 		[]
-
 class StreakComment(StreakBaseObject):
 	disp_attr_keys =	[
 						'pipelineKey',
@@ -160,7 +168,6 @@ class StreakComment(StreakBaseObject):
 	rw_attr_keys = 		[
 						'message'
 						]
-
 class StreakSnippet(StreakBaseObject):
 	disp_attr_keys =	[
 						'userKey',

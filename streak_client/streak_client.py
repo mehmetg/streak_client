@@ -26,11 +26,13 @@ class StreakClientBaseObject(object):
 		self.api_auth = (my_api_key, '')
 
 	def _parse_init_args(self, **kwargs):
-		#print("args", kwargs)
-		#print("attr:", self.attributes)
+		#updates a dict with the keyword args
 		self.attributes.update(kwargs)
 	
 	def _get_req_fp(self, op):
+		'''Decisions on what verb to use and content headers happen here
+		Args:
+			op 			a string specifying a http verb'''
 		if(op):
 			op = op.lower()
 			if op == 'get':
@@ -45,6 +47,13 @@ class StreakClientBaseObject(object):
 			raise NotImplementedError('Operation {} is not supported!'.format(op))
 	
 	def _req(self, op, uri, payload = None):
+		'''HTTP  reequest wrapper with data packaging fucntionality
+		Args:
+			op 			http verb in str
+			uri 		address of the request
+			payload		data to be sent in dict format (default: None) 
+						If not provided no data is sent
+			return 		code and req response dict (single or list)'''
 		if DEBUG:
 			print('uri', uri)
 
@@ -82,14 +91,22 @@ class StreakClient(StreakClientBaseObject):
 		api_version			api version
 		api_auth 			http auth tuple with api key to be used by the client (instance only)
 		api_uri 			complete api uri (instance only)
-		******
-		pipeline_root_uri	uri to the pipelines root.
-		pipelines			list of pipeline objects for the user
-							pipeline is a shallow object has only names for members
-		whoami				user information
-		req 				last http request performed (debug/devel purposes)
+		sort_by_postfix		'?sortBy=' uri building block
+		boxes_suffix		'boxes' uri building block
+		stages_suffix		'stages' uri building block
+		pipelines_suffix	'pipelines' uri building block
+		search_suffix		'search?query=' uri building block
+		snippets_suffix		'snippets' uri building block
+		fields_suffix		'fields' uri building block
+		newsfeed_suffix		'newsfeed' uri building block
+		threads_suffix		'threads' uri building block
+		comments_suffix		'comments' uri building block
+		files_suffix		'files' uri building block
+		file_contents_suffix'contents' uri building block
+		file_link_suffix	'link' uri building block
+		reminders_suffix	'reminders' uri building block
+		detail_level_suffix	'?detailLevel=' uri building block
 	'''
-
 	def __init__(self, my_api_key):
 		'''Initializes an instance of the class with an api key
 		Allows multiple instances with distinct keys.
@@ -126,63 +143,104 @@ class StreakClient(StreakClientBaseObject):
 	#Private Utility Methods
 	###
 	def _parse_req(self, req):
+		'''Parses a request object for relevant debugging information. Only works
+		if DEBUG is enabled.
+		Args:
+			req 			requests req object
+		'''
 		if DEBUG:
 			if req.status_code != requests.codes.ok:
 				print("code: {}".format(req.status_code))
 				print("response {}".format(req.json()))
 				print("req headers {}".format(req.request.headers))
 				print("req body {}".format(req.request.body))
+
+	def _raise_unimplemented_error(self):
+		'''Exception helper for raising exceptions for unimplemented class members'''
+		import inspect 
+		raise NotImplementedError("{} is not implemented yet!".format(inspect.stack()[0][3]))
+	###
+	#User Methods
+	###
+	def get_user(self, key = None):
+		'''Get user information from the server and update the attribute
+		Args:
+			key			user key (default: me)
+			return		(status code for the get request, dict user data)
+		''' 	
+		if key:
+			uri = self.api_uri + "/users/" + key
+		else:
+			uri = self.api_uri + "/users/me"
+
+		return self._req('get', uri)	
 	###
 	#Pipeline Methods
 	###
-	def get_pipelines(self, sort_by = None):
-		'''Gets a list of all pipeline objects. Performs a single GET.
+	def get_pipeline(self, pipeline_key = None, sort_by = None):
+		'''Gets a list of one/all pipeline objects. Performs a single GET.
 		To go deeper individual pipelines need to be polled for their contents.
 		This is a directory for what we could ask for.
 		Args:
-			sort_by		in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
-			returns 	(status code for the GET request, dict of pipelines)
+			pipeline_key	specifies pipeline to get. (default = None i.e. ALL)
+			sort_by			in desc order by 'creationTimestamp' or 
+							'lastUpdatedTimestamp' (ignored when a pipeline_key
+							is supplied)
+			returns 		(status code for the GET request, dict of pipelines)
 		'''
-
 		uri = '/'.join([
 						self.api_uri,
 						self.pipelines_suffix,
 						])
-		if sort_by:
-			uri += self.sort_by_postfix + sort_by
+		if pipeline_key:
+			uri = '/'.join([
+							uri,
+							pipeline_key
+							])
+		else:
+			if sort_by:
+				if sort_by in ['creationTimestamp', 'lastUpdatedTimestamp']:
+					uri += self.sort_by_postfix + sort_by
+				else:		
+					return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'sortBy needs to be \'creationTimestamp\', or \'lastUpdatedTimestamp\''}
+
 
 		return self._req('get', uri)
-	
-	def get_pipeline(self, key):
-		'''Gets the pipeline with the specified key. Performs a single GET.
-		To go deeper individual pipelines need to be polled for their contents.
-		This is a directory for what we could ask for.
-		Args:
-			returns 	(status code for the GET request, pipeline dict)
-		'''
-		if key:
-			uri = self.pipeline_root_uri + '/' + key
-			return self._req('get', uri)
-		else:
-			return requests.codes.bad_request, None
 
 	def delete_pipeline(self, key):
 		'''Deletes the pipeline specified by the key
 		Args:
 			returns 	(status code for the DELETE request, success message dict)
+						expect (200 , {'success': 'true'}) for successful execution}
 		'''
 		if key:
 			uri = self.pipeline_root_uri + '/' + key
 			return self._req('delete', uri)
 		else:
 			return requests.codes.bad_request, None
+	
+	def delete_all_pipelines(self):
+		'''Deletes all pipelines
+		Args:
+			returns		OK for overall success or last error code, resp data.
+		'''
+		code, data = self.get_pipeline()
+		if code == requests.codes.ok:
+			for pl_data in data:
+				c, d = self.delete_pipeline(pl_data['pipelineKey'])
+				if c != requests.codes.ok:
+					code = c
+					data = d
+		return code, data		
 
 	def create_pipeline(self, name, description, **kwargs):
 		'''Creates a pipeline with the provided attributes.
 		Args:
 			name	required name string
-			kwargs	{name, description, orgWide, aclEntries}
-			return	(status code, pipeline_dict)
+			kwargs	{name, description, orgWide, aclEntries} user 
+			specifiable ones only
+			return	(status code, pipeline_dict) (as created)
 		'''
 		#req sanity check
 		if not (name and description):
@@ -226,53 +284,55 @@ class StreakClient(StreakClientBaseObject):
 	###
 	#Box Methods
 	###
-	def get_all_boxes(self, sort_by = None):
-		'''Gets a list of all pipeline objects. Performs a single GET.
+	def get_box(self, box_key = None, sort_by = None):
+		'''Gets a list of one/all box objects. Performs a single GET.
 		To go deeper individual boxes need to be polled for their contents.
 		This is a directory for what we could ask for.
 		Args:
+			box_key		key for the target box (default: None i.e. ALL)
 			sort_by		in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
-			returns 	(status code for the GET request, dict of boxes) 
+			returns 	(status code for the GET request, dict of box or a list thereof) 
 		'''
+		uri = '/'.join([
+						self.api_uri,
+						self.boxes_suffix
+						])
+		if box_key:
+			uri = '/'.join([
+							uri,
+							box_key
+							])
 		if sort_by:
-			uri = self.box_root_uri + '/' + self.sort_by_postfix + sort_by
-		else:
-			uri = self.box_root_uri
-
-		return self._req('get', uri)
-
-	def get_box(self, box_key, sort_by = None):
-		'''Gets a list of all pipeline objects. Performs a single GET.
-		To go deeper individual boxes need to be polled for their contents.
-		This is a directory for what we could ask for.
-		Args:
-			pipeline_key	key for pipeline
-			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
-			returns 		(status code for the GET request, dict of boxes) 
-		'''
-		if not box_key:
-			return requests.codes.bad_request, None
-
-		uri = self.box_root_uri + '/' + box_key
-		
+				if sort_by in ['creationTimestamp', 'lastUpdatedTimestamp']:
+					uri += self.sort_by_postfix + sort_by
+				else:		
+					return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'sortBy needs to be \'creationTimestamp\', or \'lastUpdatedTimestamp\''}
 		return self._req('get', uri)
 
 	def get_pipeline_boxes(self, pipeline_key, sort_by = None):
-		'''Gets a list of all pipeline objects. Performs a single GET.
-		To go deeper individual boxes need to be polled for their contents.
-		This is a directory for what we could ask for.
+		'''Gets a list of all box objects in a pipeline. Performs a single GET.
 		Args:
 			pipeline_key	key for pipeline
 			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
+							Not sure if it is supported
 			returns 		(status code for the GET request, dict of boxes) 
 		'''
 		if not pipeline_key:
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.boxes_suffix
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix
+						pipeline_key
+						])
 		
 		if sort_by:
-			uri +=  '/' + self.sort_by_postfix + sort_by
+				if sort_by in ['creationTimestamp', 'lastUpdatedTimestamp']:
+					uri += self.sort_by_postfix + sort_by
+				else:		
+					return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'sortBy needs to be \'creationTimestamp\', or \'lastUpdatedTimestamp\''}
 		
 		return self._req('get', uri)
 
@@ -288,35 +348,36 @@ class StreakClient(StreakClientBaseObject):
 			return requests.codes.bad_request, None
 
 	def create_pipeline_box(self, pipeline_key, name, **kwargs):
-		'''Creates a pipeline with the provided attributes.
+		'''Creates a box int the pipeline specified with the provided attributes.
 		Args:
 			name	required name string
-			kwargs	{name, description, orgWide, aclEntries}
+			kwargs	{...} see StreakBox object for details
 			return	(status code, box dict)
 		'''
 		#req sanity check
 		if not (pipeline_key and name):
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + self.boxes_suffix
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.boxes_suffix
+						]) 
+
 		kwargs.update({'name':name})
 
 		new_box = StreakBox(**kwargs)
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
-		code, r_data = self._req('put', uri, new_box.to_dict(rw = True))
 		
-		#in case there's an error and we're debugging
+		code, data = self._req('put', uri, new_box.to_dict(rw = True))
 		
-		return code, r_data
+		return code, data
 	
 	def update_box(self, box):
 		'''Updates a box with the provided attributes.
 		Args:
-			key		required identifier for the box
-			kwargs	{name, description, orgWide, aclEntries, ...}
-			return	(status code, pipeline_dict)
+			box 	StreakBox object with updated info
+			return	(status code, box in dict form)
 		'''
 		#req sanity check
 		payload = None
@@ -324,33 +385,15 @@ class StreakClient(StreakClientBaseObject):
 			return requests.codes.bad_request, None
 
 		payload = box.to_dict(rw = True)
-	
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
+
 		try:
 			uri = self.box_root_uri + '/' + box.attributes['boxKey']
 		except KeyError:
 			return requests.codes.bad_request, None
 	
-		code, r_data = self._req('post', uri , json.dumps(payload))
+		code, data = self._req('post', uri , json.dumps(payload))
 
-		return code, r_data
-	###
-	#User Methods
-	###
-	def get_user(self, key = None):
-		'''Get user information from the server and update the attribute
-		Args:
-			key			user key (default: me)
-			return		(status code for the get request, dict user data)
-		''' 	
-		if key:
-			uri = self.api_uri + "/users/" + key
-		else:
-			uri = self.api_uri + "/users/me"
-
-		return self._req('get', uri)
+		return code, data
 	###
 	#Search Methods
 	###
@@ -370,85 +413,89 @@ class StreakClient(StreakClientBaseObject):
 	###
 	#Snippet Methods
 	###
-	def get_snippets(self):
-		'''Gets all snippets available.
+	def get_snippet(self, snippet_key = None):
+		'''Get all/one specific snippet by its key
 		Args:
-			return		(status code, snippets as list(dicts))
+			key			snippet key (default: None i.e. ALL)
+			return		(status code, snippet dict or list thereof)
 		'''
-		code, data =   self._req('get', self.snippet_root_uri)
-		
-		return code, data
+		uri = '/'.join([
+						self.api_uri,
+						self.snippets_suffix
+						])
+		if snippet_key:
+			uri = '/'.join([
+							uri,
+							snippet_key
+							])
 
-	def get_snippet(self, key):
-		'''Get specific snippet by its key
-		Args:
-			key			snippet key
-			return		(status code, snippet dict)
-		''' 	
-		if not key:
-			return requests.codes.bad_request, None
-
-		code, data =  self._req('get', self.snippet_root_uri + '/' + key)
+		code, data =  self._req('get', uri)
 		
 		return code, data
 	###
 	#Stage Methods
 	###
-	def get_pipeline_stages(self, pipeline_key):
-		'''Gets a list of all stage objects. Performs a single GET.
-		To go deeper individual boxes need to be polled for their contents.
-		This is a directory for what we could ask for.
+	def get_pipeline_stage(self, pipeline_key, stage_key = None, sort_by = None):
+		'''Gets a list of one/all stage objects in a pipeline. Performs a single GET.
 		Args:
 			pipeline_key	key for pipeline
+			stage_key 		key for stage (default: None i.e. ALL)
 			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
-			returns 		(status code for the GET request, dict of stages) 
+							may or may not be supported
+			returns 		(status code for the GET request, dict of stages)
+							It is not a list hence the .values() before return
 		'''
 		if not pipeline_key:
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.stages_suffix
+						])
+		if stage_key:
+			uri = '/'.join([
+							uri,
+							stage_key
+							])
 		
+		if sort_by:
+				if sort_by in ['creationTimestamp', 'lastUpdatedTimestamp']:
+					uri += self.sort_by_postfix + sort_by
+				else:		
+					return requests.codes.bad_request, {'success' : 'False', 
+												'error': 'sortBy needs to be \'creationTimestamp\', or \'lastUpdatedTimestamp\''}
+
 		code, data = self._req('get', uri)
-
-		return code, data.values()
 		
-	def get_pipeline_stage(self, pipeline_key, stage_key, sort_by = None):
-		'''Gets a list of all stage objects. Performs a single GET.
-		To go deeper individual boxes need to be polled for their contents.
-		This is a directory for what we could ask for.
-		Args:
-			pipeline_key	key for pipeline
-			stage_key		key for stage
-			sort_by			in desc order by 'creationTimestamp' or 'lastUpdatedTimestamp'
-			returns 		(status code for the GET request, dict of stages) 
-		'''
-		if not (pipeline_key and stage_key):
-			return requests.codes.bad_request, None
-
-		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix + '/' + stage_key
+		#format is ambigious so we need to rely on user input
+		if stage_key:
+			data = data.values()
 		
-		code, data = self._req('get', uri)
-
 		return code, data
-
+		
 	def create_pipeline_stage(self, pipeline_key, name, **kwargs):
-		'''Creates a pipeline with the provided attributes.
+		'''Creates a pipeline stage with the provided attributes.
 		Args:
 			name	required name string
-			kwargs	{name, description, orgWide, aclEntries}
+			kwargs	{..} see StreakStage object for details
 			return	(status code, stage dict)
 		'''
 		#req sanity check
 		if not (pipeline_key and name):
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.stages_suffix])
+		
 		kwargs.update({'name':name})
 
 		new_box = StreakStage(**kwargs)
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
+		
 		code, data = self._req('put', uri, new_box.to_dict(rw = True))
 		
 		return code, data
@@ -464,7 +511,13 @@ class StreakClient(StreakClientBaseObject):
 		if not (pipeline_key and stage_key):
 			return requests.codes.bad_request, None
 
-		uri = self.pipeline_root_uri + '/' + pipeline_key + '/' + self.stages_suffix + '/' +stage_key
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix,
+						pipeline_key,
+						self.stages_suffix,
+						stage_key
+						])
 		
 		code, data = self._req('delete', uri)
 		
@@ -505,7 +558,7 @@ class StreakClient(StreakClientBaseObject):
 	#Newsfeed Methods
 	###
 	def _create_field(self, uri , name, field_type, **kwargs):
-		'''Creates a pipeline with the provided attributes.
+		'''Creates a field with the provided attributes.
 		Args:
 			uri		base uri for the field (pipeline or box uri)
 			name	required name string
@@ -533,7 +586,7 @@ class StreakClient(StreakClientBaseObject):
 		Args:
 			key	reqiured identifier for the pipeline or box
 			field			StreakField object
-			kwargs			{name, type}
+			kwargs			{name, type} see StreakField for details
 			return			(status code, field dict)
 		'''
 		#req sanity check
@@ -547,7 +600,10 @@ class StreakClient(StreakClientBaseObject):
 		#print(new_pl.to_dict())
 		#raw_input()
 		try:
-			uri = '/'.join([uri, field.attributes['key']])
+			uri = '/'.join([
+							uri, 
+							field.attributes['key']
+							])
 		except KeyError:
 			return requests.codes.bad_request, None
 	
@@ -556,7 +612,14 @@ class StreakClient(StreakClientBaseObject):
 		return code, data
 
 	def get_pipeline_field(self, pipeline_key, field_key = None):
-		uri = '/'.join([self.api_uri, 
+		'''Gets one/all field in a pipeline
+		Args:
+			pipeline_key 		key for pipeline
+			field_key 			key for field (default: None i.e. ALL)
+			returns				status code, field dict or list thereof
+		'''
+		uri = '/'.join([
+						self.api_uri, 
 						self.pipelines_suffix, 
 						pipeline_key, 
 						self.fields_suffix
@@ -567,7 +630,7 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 
 	def create_pipeline_field(self, pipeline_key, name, field_type, **kwargs):
-		'''Creates a pipeline with the provided attributes.
+		'''Creates a pipeline field with the provided attributes.
 		Args:
 			pipeline_key	specifying the pipeline to add the field to
 			name			required name string
@@ -587,7 +650,14 @@ class StreakClient(StreakClientBaseObject):
 		return code, data
 
 	def update_pipeline_field(self, pipeline_key, field):
-		uri = '/'.join([self.api_uri,
+		'''Upates pipeline field as specified
+		Args:
+			pipeline_key		key for pipeline where the fields lives
+			field 				StreakField object with fresh data
+			returns				(status code, updated field dict)
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.pipelines_suffix,
 						pipeline_key,
 						self.fields_suffix
@@ -595,24 +665,54 @@ class StreakClient(StreakClientBaseObject):
 		return self._update_field(uri, field)
 
 	def delete_pipeline_field(self, pipeline_key, field_key):
-		uri = '/'.join([self.api_uri,
+		'''Deletes pipeline field as specified by key(s)
+		Args:
+			pipeline_key		key for pipeline where the fields lives
+			field_key			field to be deleted
+			returns				(status code, resp data)
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.pipelines_suffix, 
 						pipeline_key, 
 						self.fields_suffix, 
 						field_key
 						])
+
 		return self._req('delete', uri)
 
-	def create_box_field(self, box_key, name, field_type, **kwargs):
-		raise Exception("Not supported exception!")
-		'''Creates a pipeline with the provided attributes.
+	def get_box_field(self, box_key, field_key = None):
+		'''Gets one/all field in a box
 		Args:
-			box_key 		specifying the box to add the field to
+			box_key 		key for pipeline
+			field_key 			key for field (default: None i.e. ALL)
+			returns				status code, field dict or list thereof
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+		
+		uri = '/'.join([self.api_uri,
+						self.boxes_suffix,
+						box_key,
+						self.fields_suffix
+						])
+		if field_key:
+			uri = '/'.join([uri, field_key])
+
+		return self._req('get', uri)
+
+	def create_box_field(self, box_key, name, field_type, **kwargs):
+		'''Creates a box field with the provided attributes.
+		Args:
+			box_key			specifying the box to add the field to
 			name			required name string
 			field_type		required type string [TEXT_INPUT, DATE or PERSON]
 			kwargs			{}
 			return			(status code, field dict)
 		'''
+		#does not work
+		self._raise_unimplemented_error()
+		
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix, 
 						box_key,
@@ -624,25 +724,32 @@ class StreakClient(StreakClientBaseObject):
 		return code, data
 
 	def update_box_field(self, box_key, field):
+		'''Upates box field as specified
+		Args:
+			box_key		key for pipeline where the fields lives
+			field 				StreakField object with fresh data
+			returns				(status code, updated field dict)
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+		
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.fields_suffix
 						])
 		return self._update_field(uri, field)
-
-	def get_box_field(self, box_key, field_key = None):
-		uri = '/'.join([self.api_uri,
-						self.boxes_suffix,
-						box_key,
-						self.fields_suffix
-						])
-		if field_key:
-			uri = '/'.join([uri, field_key])
-
-		return self._req('get', uri)
 	
 	def delete_box_field(self, box_key, field_key):
+		'''Deletes pipeline field as specified by key(s)
+		Args:
+			pipeline_key		key for pipeline where the fields lives
+			field_key			field to be deleted
+			returns				(status code, resp data)
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+
 		uri = '/'.join([self.api_uri, 
 						self.boxes_suffix, 
 						box_key, 
@@ -654,6 +761,12 @@ class StreakClient(StreakClientBaseObject):
 	#Newsfeed Methods
 	###
 	def _get_newsfeeds(self, uri, detail_level = None):
+		'''General purpose function to get newsfeeds
+		Args:
+			uri 			uri for the feed base
+			detail_level 	arguments for req str ['ALL', 'CONDENSED']
+			return 			list of feed dicts parse at your convenience
+		'''
 		if detail_level:
 			if detail_level not in ['ALL', 'CONDENSED']:
 				return requests.codes.bad_request, {'success' : 'False', 
@@ -662,7 +775,14 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 
 	def get_pipeline_newsfeeds(self, pipeline_key, detail_level = None):
-		uri = '/'.join([self.api_uri,
+		'''Function to get newsfeed for a pipeline
+		Args:
+			pipeline_key	pipeline key
+			detail_level 	arguments for req str ['ALL', 'CONDENSED']
+			return 			list of feed dicts parse at your convenience
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.pipelines_suffix,
 						pipeline_key,
 						self.newsfeed_suffix
@@ -670,7 +790,14 @@ class StreakClient(StreakClientBaseObject):
 		return self._get_newsfeeds(uri, detail_level)
 
 	def get_box_newsfeeds(self, box_key, detail_level = None):
-		uri = '/'.join([self.api_uri,
+		'''Function to get newsfeed for a pipeline
+		Args:
+			box 			pipeline key
+			detail_level 	arguments for req str ['ALL', 'CONDENSED']
+			return 			list of feed dicts parse at your convenience
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.newsfeed_suffix
@@ -680,6 +807,11 @@ class StreakClient(StreakClientBaseObject):
 	#Thread Methods
 	###
 	def get_thread(self, thread_key):
+		'''Gets a thread specified by thread_key
+		Args:
+			thread_key 		thread to get
+			returns 		a thread dict
+		'''
 		uri = '/'.join([self.api_uri,
 						self.threads_suffix,
 						thread_key
@@ -687,7 +819,13 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 
 	def get_box_threads(self, box_key):
-		uri = '/'.join([self.api_uri,
+		'''Gets all threads in a specified box
+		Args:
+			box_key 		box to look in
+			returns 		a list of thread dicts
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.threads_suffix
@@ -697,14 +835,15 @@ class StreakClient(StreakClientBaseObject):
 	#Comment Methods
 	###
 	def create_box_comments(self, box_key, message, **kwargs):
-		'''Creates a pipeline with the provided attributes.
+		'''Creates a comments in a box with the provided attributes.
 		Args:
 			box_key			key for box
 			message			message string
-			kwargs			{}
+			kwargs			{} see StreakComment object for more information
 			return			(status code, comment dict)
 		'''
-		uri = '/'.join([self.api_uri,
+		uri = '/'.join([
+						self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.comments_suffix
@@ -724,7 +863,13 @@ class StreakClient(StreakClientBaseObject):
 		return code, r_data
 	
 	def get_box_comments(self, box_key):
-		uri = '/'.join([self.api_uri,
+		'''Gets comments in a box with the provided attributes.
+		Args:
+			box_key			key for box
+			return			(status code, list of comment dicts)
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.comments_suffix
@@ -732,7 +877,14 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 	
 	def delete_box_comment(self, box_key, comment_key):
-		raise Exception("Not supported yet! Or not documented!")
+		'''Deletes comment in a box with the comment_key
+		Args:
+			box_key			key for box
+			return			(status code, list of comment dicts)
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix,
 						box_key,
@@ -746,14 +898,15 @@ class StreakClient(StreakClientBaseObject):
 	def create_box_reminder(self, box_key, message, remind_date, remind_follwers, **kwargs):
 		'''Creates a reminder with the provided attributes.
 		Args:
-			box_key 		specifying the box to add the field to
-			message			message for the reminder
-			remind_date		date to remind on in ticks.
-			remind_follwers true/false
-			kwargs			{}
-			return			(status code, reminder dict)
+			box_key 			specifying the box to add the field to
+			message				message for the reminder
+			remind_date			date to remind on in ticks.
+			remind_followers	true/false
+			kwargs				{..} see StreakReminder object for details
+			return				(status code, reminder dict)
 		'''
-		uri = '/'.join([self.api_uri,
+		uri = '/'.join([
+						self.api_uri,
 						self.boxes_suffix, 
 						box_key,
 						self.reminders_suffix
@@ -763,9 +916,7 @@ class StreakClient(StreakClientBaseObject):
 						'remindFollowers': remind_follwers})
 
 		new_rem = StreakReminder(**kwargs)
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
+		
 		code, data = self._req('put', uri, new_rem.to_dict(rw = True))
 		
 		return code, data	
@@ -780,16 +931,12 @@ class StreakClient(StreakClientBaseObject):
 						self.reminders_suffix,
 						])
 		#req sanity check
-
 		payload = None
 		if  type(reminder) is not StreakReminder:
 			return requests.codes.bad_request, None
 
 		payload = reminder.to_dict(rw = True)
 	
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
 		try:
 			uri = '/'.join([uri, reminder.attributes['key']])
 		except KeyError:
@@ -800,6 +947,15 @@ class StreakClient(StreakClientBaseObject):
 		return code, data
 
 	def get_box_reminders(self, box_key):
+		'''Gets all reminders for a box
+		Args:
+			reminder		updated reminder of StreakReminder type
+			return			(status code, reminder dict)
+		'''
+		#required sanity check
+		if box_key:
+			return requests.codes.bad_request, None
+
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix, 
 						box_key,
@@ -809,13 +965,33 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 
 	def get_reminder(self, reminder_key):
-		uri = '/'.join([self.api_uri,
+		'''Gets one reminder
+		Args:
+			reminder_key	key for the reminder to get
+			return			(status code, reminder dict)
+		'''
+		#required sanity check
+		if reminder_key:
+			return requests.codes.bad_request, None
+		
+		uri = '/'.join([
+						self.api_uri,
 						self.reminders_suffix,
 						reminder_key
 						])
+
 		return self._req('get', uri)
 
 	def delete_reminder(self, reminder_key):
+		'''Deletes specified reminder
+		Args:
+			reminder_key	key for the reminder to get
+			return			(status code, resp key)
+		'''
+		#required sanity check
+		if reminder_key:
+			return requests.codes.bad_request, None
+
 		uri = '/'.join([self.api_uri,
 						self.reminders_suffix,
 						reminder_key
@@ -825,13 +1001,28 @@ class StreakClient(StreakClientBaseObject):
 	#File Methods
 	###
 	def get_file(self, file_key):
-		uri = '/'.join([self.api_uri,
+		'''Gets file information
+		Args:
+			file_key		key for the file to get
+			return			(status code, dict of file info)
+		'''
+		uri = '/'.join([
+						self.api_uri,
 						self.files_suffix,
 						file_key
 						])
+
 		return self._req('get', uri)
 	
 	def get_file_contents(self, file_key):
+		'''Gets file contents
+		Args:
+			file_key		key for the file 
+			return			(status code, ?)
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+		
 		uri = '/'.join([self.api_uri,
 						self.files_suffix,
 						file_key,
@@ -840,6 +1031,14 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 	
 	def get_file_link(self, file_key):
+		'''Gets link to file
+		Args:
+			file_key		key for the file 
+			return			(status code, ?)
+		'''
+		#does not work
+		self._raise_unimplemented_error()
+
 		uri = '/'.join([self.api_uri,
 						self.files_suffix,
 						file_key,
@@ -848,26 +1047,25 @@ class StreakClient(StreakClientBaseObject):
 		return self._req('get', uri)
 
 	def get_box_files(self, box_key):
+		'''Gets to file infos in a single box.
+		Args:
+			box_key		key for the file 
+			return		(status code, list of file info dicts)
+		'''
 		uri = '/'.join([self.api_uri,
 						self.boxes_suffix,
 						box_key,
 						self.files_suffix
 						])
+
 		return self._req('get', uri)
 
 ############
 #Main
 ############
 def main():
-	"""Code to run simple demo commands"""
-	key = ''
-	with open('/Volumes/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
-		key = f.read().strip()
-	
-	s_client = StreakClient(key)
-	print('key', key)
-	box_reminder_api_test(s_client)
-	
+	#I do nothing but facilitate tests during dev time.
+	pass
 
 if __name__ == '__main__':
 	main()
