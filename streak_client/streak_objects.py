@@ -35,7 +35,7 @@ class StreakBaseObject(object):
 					else:
 						disp_attr[key] = None
 			pprint(disp_attr)
-		delete pprint
+		del pprint
 
 	def to_dict(self, rw = False):
 		'''Returns relevant attributes as a dict.

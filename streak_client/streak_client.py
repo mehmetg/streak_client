@@ -323,7 +323,7 @@ class StreakClient(StreakClientBaseObject):
 
 		uri = '/'.join([
 						self.api_uri,
-						self.pipelines_suffix
+						self.pipelines_suffix,
 						pipeline_key
 						])
 		
