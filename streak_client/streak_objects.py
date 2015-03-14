@@ -1,4 +1,3 @@
-from pprint import pprint
 class StreakBaseObject(object):
 	'''Base classes for ease of use while editing objects through the API
 	Attributes:
@@ -22,6 +21,7 @@ class StreakBaseObject(object):
 		Args:
 			displayAll		if True displays ALL class attributes.
 		'''
+		from pprint import pprint
 		if displayAll:
 			pprint(self.attributes)
 		else:
@@ -35,6 +35,7 @@ class StreakBaseObject(object):
 					else:
 						disp_attr[key] = None
 			pprint(disp_attr)
+		delete pprint
 
 	def to_dict(self, rw = False):
 		'''Returns relevant attributes as a dict.
