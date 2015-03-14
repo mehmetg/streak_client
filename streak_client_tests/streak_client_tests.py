@@ -1,88 +1,111 @@
 import unittest
-import sys
-import os
 
 if __name__ == '__main__':
-	print "name", __name__
+	import sys
+	import os
 	sys.path.append(os.path.abspath(".."))
 	from streak_client import *
+	del sys
+	del os
+elif len(__name__.split('.')) > 2:
+	#nose tests compatibility
+	from ..streak_client import *
 else:
-	print "name", __name__
-	from ..streak_client import StreakClient
+	#py.test
+	from streak_client import *
 
+class StreakClientTestBase(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		key = ''
+		with open('/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
+			key = f.read().strip()
+		cls.client = StreakClient(key)
+	@classmethod
+	def tearDownClass(cls):
+		del cls.client
 
-	key = '0b6359c686584bc3b610a640e2e7eb9f'
-
-
-
-'''
-class MyUptimeTest(unittest.TestCase):
-
-	def setUp(self):
-		self.system = platform.system()
-		self.stdout_bkp = sys.stdout
-		self.my_stdout = StringIO()
-
-	def tearDown(self):
-		#self.system = None
-		self._clear_saved_stdout()
-
-	def test_get_platform(self):
-		self.assertTrue(my_uptime.get_platform() is self.system, 
-						'Platform detection failed!')
-
-	def test_uptime(self):
-		r = re.compile(r'\d+:\d\d')
-		self._redirect_stdout()
-		my_uptime.uptime()
-		self._restore_stdout()
-		output = self._get_saved_stdout()
-		
-		if self.system == 'Linux':
-			r = re.compile(r'.*\d\d:\d\d.\d+')
-			system_response = ("System in use is %s" % self.system)
-			lines = [line.strip() for line in output.split('\n')]
-			if(len(lines) > 1):
-				self.assertTrue(system_response == lines[0],
-								"System type failed! \n%s !=  %s" % (lines[0] , system_response) )
-				self.assertIsNotNone(r.match(lines[1]),
-					"Uptime check failed on %s" % lines[1])
-			else:
-				self.assertTrue(False, 'Uptime output failed on %s' % self.system)
-		else:
-			correct_output = "%s is not supported!" % self.system
-			self.assertTrue( correct_output == 
-							 output.split('\n')[0].strip(),
-							"Uptime on unsupported system failed!")
-
-	def test_main(self):
-		self._redirect_stdout()
-		my_uptime.uptime()
-		output1 = self._get_saved_stdout()
-		self._clear_saved_stdout()
-		my_uptime.main()
-		output2 = self._get_saved_stdout()
-		self._restore_stdout()
-		self.assertEqual(output1, output2, "Main function does not behave same as uptime!")
-
-	def  _redirect_stdout(self):
-		sys.stdout = self.my_stdout
-
-	def _restore_stdout(self):
-		sys.stdout = self.stdout_bkp
+class StreakClientUserAPITest(StreakClientTestBase):
+	###
+	#Unittest basics
+	###
 	
-	def _get_saved_stdout(self):
-		return self.my_stdout.getvalue()
+	def test_get_user_me(self):
+		code, data = self.client.get_user()
+		self.assertEqual(code, 200, "Response is not OK. Code: {}".format(code))
+	
+	def test_get_user_by_key(self):
+		code, data = self.client.get_user()
+		user_key = data['userKey']
+		code, data = self.client.get_user(user_key)
+		self.assertEqual(code, 200, "Response is not OK. Code: {}".format(code))
+		
+	def test_get_user_by_key_invalid_key(self):
+		code, data = self.client.get_user(' ')
+		self.assertEqual(code, 400, "Response is not '400'. Code: {}".format(code))
+		
+class StreakClientPipelineAPITest(StreakClientTestBase):
+	
+	def tearDown(self):
+		#delete all pipelines.
+		#assumes get_all and delete work fine.
+		pass
 
-	def _clear_saved_stdout(self):
-		return self.my_stdout.truncate(0)
-'''
+	def test_create_update_get_delete_one_pipeline(self):
+		#create entry
+		code, data = self.client.create_pipeline('my_name', 'my_description')
+		self.assertEqual(code, 200, "Create response is not OK. Code: {}".format(code))
+		self.assertTrue('name' in data and data['name'] == 'my_name', 
+						'Create response content is missing!')
+		#update entry
+		
+		pl = StreakPipeline(**data)
+		
+		pl.attributes['name'] = "new_name"
+		pl.attributes['description'] = "new_description"
+
+		#update the pipeline
+		code, data = self.client.update_pipeline(pl)
+		self.assertEqual(code, 200, "Update response is not OK. Code: {}".format(code))
+		new_pl = StreakPipeline(**data)
+		
+		#check the new values.
+		self.assertDictEqual(pl.to_dict(rw=True), new_pl.to_dict(rw=True), "Update data failed!")
+		#get entry
+		code, data = self.client.get_pipeline(data['pipelineKey'])
+		self.assertEqual(code, 200, "Get response is not OK. Code: {}".format(code))
+		self.assertTrue('name' in data and data['name'] == 'new_name', 
+						'Get response content is missing!')
+		#delete entry
+		code, data = self.client.delete_pipeline(data['pipelineKey'])
+		self.assertEqual(code, 200, "Delete response is not OK. Code: {}".format(code))
+		
+	#def test_get_all_pipelines():
+	#	pass
+	def test_delete_all_pipelines(self):
+		code, data = self.client.delete_all_pipelines()
+		self.assertEqual(code, 200, "Delete all response not OK. Code: {}".format(code))
+		code, data = self.client.get_pipeline()
+		self.assertEqual(len(data), 0, "Expected: 0, Read: {}".format(len(data)))
+	def test_get_delete_all_pipelines(self):
+		num_pl = 10
+		for i in xrange(num_pl):
+			code, data = self.client.create_pipeline('my_name' + str(i), 'my_description' + str(i))
+			self.assertEqual(code, 200, "Create response is not OK. Code: {}".format(code))
+			self.assertTrue('name' in data and data['name'] == 'my_name' + str(i), 
+							'Create response content is missing!')
+		code, data = self.client.get_pipeline()
+		self.assertEqual(len(data), num_pl, "Created: {}, Read: {}".format(num_pl, len(data)))
+
+		code, data = self.client.delete_all_pipelines()
+		self.assertEqual(code, 200, "Delete all response not OK. Code: {}".format(code))
+		code, data = self.client.get_pipeline()
+		self.assertEqual(len(data), 0, "Expected: 0, Read: {}".format(len(data)))
+'''	
 ############
 #Temporary test routines.
 ############
-def user_api_test():
-	print "name", __name__
-	s_client = StreakClient(key)
+def user_api_test(s_client):
 	code, user_data = s_client.get_user()
 	print('---ME---')
 	user = StreakUser(**user_data)
@@ -91,7 +114,6 @@ def user_api_test():
 	code, user_data = s_client.get_user(user.attributes['userKey'])
 	user = StreakUser(**user_data)
 	user.show()
-'''
 def pipeline_api_test(s_client):	
 	print('---Create PIPELINE---')
 	code, data = s_client.create_pipeline("1", "desc")
@@ -430,17 +452,16 @@ def box_reminder_api_test(s_client):
 			pprint(data)
 			print("------------------")
 	raw_input()
-'''
+	'''
 def main():
-	key = ''
-	with open('/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
-		key = f.read().strip()
-	s_client = StreakClient(key)
-	user_api_test(s_client)
+	unittest.main(verbosity=2)
 
+	'''
+	suite = unittest.TestSuite()
+	suite.addTest(unittest.makeSuite(StreakClientTestUserAPI))
+	unittest.TextTestRunner(verbosity=2).run(suite)
+	'''
 if __name__ == '__main__':
 	main()
 	
-	#suite = unittest.TestSuite()
-	#suite.addTest(unittest.makeSuite(MyUptimeTest))
-	#unittest.TextTestRunner(verbosity=2).run(suite)
+	
