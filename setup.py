@@ -21,7 +21,7 @@ setup(	name='streak_client',
 		keywords=( 'streak', 'api'),
 		classifiers=[
 	                 'Development Status :: 4 - Beta',
-	                 'Topic :: Software Development :: Tools',
+	                 'Topic :: Software Development :: Libraries :: Python Modules',
 	                 'License :: OSI Approved :: MIT License',
 	                 'Operating System :: MacOS',
 	                 'Operating System :: Microsoft :: Windows',
