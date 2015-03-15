@@ -203,14 +203,18 @@ class StreakClient(StreakClientBaseObject):
 
 		return self._req('get', uri)
 
-	def delete_pipeline(self, key):
+	def delete_pipeline(self, pipeline_key):
 		'''Deletes the pipeline specified by the key
 		Args:
 			returns 	(status code for the DELETE request, success message dict)
 						expect (200 , {'success': 'true'}) for successful execution}
 		'''
-		if key:
-			uri = self.pipeline_root_uri + '/' + key
+		if pipeline_key:
+			uri = '/'.join([
+							self.api_uri,
+							self.pipelines_suffix,
+							pipeline_key
+							])
 			return self._req('delete', uri)
 		else:
 			return requests.codes.bad_request, None
@@ -244,10 +248,11 @@ class StreakClient(StreakClientBaseObject):
 		kwargs.update({'name':name, 'description':description})
 
 		new_pl = StreakPipeline(**kwargs)
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
-		code, r_data = self._req('put', self.pipeline_root_uri, new_pl.to_dict())
+		uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix
+						])
+		code, r_data = self._req('put', uri, new_pl.to_dict())
 		
 		return code, r_data
 	
@@ -264,12 +269,13 @@ class StreakClient(StreakClientBaseObject):
 			return requests.codes.bad_request, None
 
 		payload = pipeline.to_dict(rw = True)
-	
-		#print(new_pl.attributes)
-		#print(new_pl.to_dict())
-		#raw_input()
+
 		try:
-			uri = self.pipeline_root_uri + '/' + pipeline.attributes['pipelineKey']
+			uri = '/'.join([
+						self.api_uri,
+						self.pipelines_suffix,
+						pipeline.attributes['pipelineKey']
+						])
 		except KeyError:
 			return requests.codes.bad_request, None
 	

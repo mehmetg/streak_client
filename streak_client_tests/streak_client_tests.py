@@ -22,6 +22,7 @@ class StreakClientTestBase(unittest.TestCase):
 		cls.client = StreakClient(key)
 	@classmethod
 	def tearDownClass(cls):
+		cls.client.delete_all_pipelines()
 		del cls.client
 
 class StreakClientUserAPITest(StreakClientTestBase):
