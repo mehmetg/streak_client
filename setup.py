@@ -20,7 +20,7 @@ setup(	name='streak_client',
 		package_dir={'streak_client': 'streak_client'},
 		keywords=( 'streak', 'api'),
 		classifiers=[
-	                 'Development Status :: 1 - Alpha',
+	                 'Development Status :: 4 - Beta',
 	                 'Topic :: Software Development :: Tools',
 	                 'License :: OSI Approved :: MIT License',
 	                 'Operating System :: MacOS',
