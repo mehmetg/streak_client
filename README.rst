@@ -6,16 +6,23 @@ streak_client
 =============
 
 -------------
-Desription
+Description
 -------------
 
     Python client module for Streak API.
+    For more information and documentation please refer to `Streak API Documentation <http://www.streak.com/api>`_.
+
+-------------
+Installation
+-------------
+
+> pip install streak_client
 
 -------------
 Known issues
 -------------
 
-    * Does not work with Python 3.x
+    * Does not work with Python 3.x, yet.
     * Unittests are not complete (see dev status)
 
 -------------
