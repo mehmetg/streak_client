@@ -53,6 +53,6 @@ docs/_build/
 # PyBuilder
 target/
 
-#private key file
+#random files we do not need
 STREAK_API_KEY.txt
 .pypirc

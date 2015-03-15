@@ -131,11 +131,6 @@ class StreakClient(StreakClientBaseObject):
 		self.reminders_suffix = 'reminders'
 		self.detail_level_suffix = '?detailLevel='
 
-		self.pipeline_root_uri = self.api_uri + '/' + self.pipelines_suffix
-		self.box_root_uri = self.api_uri + '/' + self.boxes_suffix
-		self.search_uri = self.api_uri + '/' + self.search_suffix
-		self.snippet_root_uri = self.api_uri + '/' + self.snippets_suffix
-
 		if DEBUG:
 			print(self.api_uri)
 
@@ -555,7 +550,7 @@ class StreakClient(StreakClientBaseObject):
 		
 		return code, data
 	###
-	#Newsfeed Methods
+	#Fields Methods
 	###
 	def _create_field(self, uri , name, field_type, **kwargs):
 		'''Creates a field with the provided attributes.
