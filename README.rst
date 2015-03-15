@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/mehmetg/streak_client.svg?branch=master)](https://travis-ci.org/mehmetg/streak_client)
+.. image:: https://travis-ci.org/mehmetg/streak_client.svg
+    :target: https://travis-ci.org/mehmetg/streak_client
 
 # streak_client
 
