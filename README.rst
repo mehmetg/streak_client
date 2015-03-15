@@ -32,6 +32,12 @@ TODO
 	* Resolved issues with API methods tagged tested 'unclear'
 	* Implement unittests for API methods tagged tested 'manual'
 
+-------------
+Tests
+-------------
+
+Tests use a dummy gmail account. Feel free to change it with your own. :)
+
 --------------------------
 Development Status
 --------------------------
