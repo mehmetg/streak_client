@@ -55,3 +55,4 @@ target/
 
 #private key file
 STREAK_API_KEY.txt
+.pypirc

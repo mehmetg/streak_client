@@ -17,9 +17,8 @@ else:
 class StreakClientTestBase(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
-		key = ''
-		with open('/Users/mehmetgerceker/Desktop/bts/STREAK_API_KEY.txt','r') as f:
-			key = f.read().strip()
+		#borrowed from: https://github.com/kredei/streak_client/
+		key = '0b6359c686584bc3b610a640e2e7eb9f'
 		cls.client = StreakClient(key)
 	@classmethod
 	def tearDownClass(cls):
@@ -45,7 +44,12 @@ class StreakClientUserAPITest(StreakClientTestBase):
 		self.assertEqual(code, 400, "Response is not '400'. Code: {}".format(code))
 		
 class StreakClientPipelineAPITest(StreakClientTestBase):
-	
+	'''Touches most API related to Pipelines.
+	This is not exactly unittesting though.
+	'''
+	def setUp(self):
+		#do nothing unless we want to create stuff here in the future
+		pass
 	def tearDown(self):
 		#delete all pipelines.
 		#assumes get_all and delete work fine.
@@ -79,9 +83,6 @@ class StreakClientPipelineAPITest(StreakClientTestBase):
 		#delete entry
 		code, data = self.client.delete_pipeline(data['pipelineKey'])
 		self.assertEqual(code, 200, "Delete response is not OK. Code: {}".format(code))
-		
-	#def test_get_all_pipelines():
-	#	pass
 	def test_delete_all_pipelines(self):
 		code, data = self.client.delete_all_pipelines()
 		self.assertEqual(code, 200, "Delete all response not OK. Code: {}".format(code))

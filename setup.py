@@ -8,9 +8,9 @@ with open('streak_client/__init__.py') as inp:
           exec(line.strip())
           break
 
-setup(	name='my_uptime',
+setup(	name='streak_client',
 		version='0.01',
-		description='Uptime for linux',
+		description='simple flat client class for streak.com api with helper objects',
 		long_description = 'Streak API Client in Python',
 		url='http://github.com/mehmetg/streak_client',
 		author='Mehmet Gerceker',
@@ -18,8 +18,7 @@ setup(	name='my_uptime',
 		license='MIT',
 		packages=['streak_client'],
 		package_dir={'streak_client': 'streak_client'},
-		#package_data={'my_uptime': []},
-		keywords=(),
+		keywords=( 'streak', 'api'),
 		classifiers=[
 	                 'Development Status :: 1 - Alpha',
 	                 'Topic :: Software Development :: Tools',
@@ -31,7 +30,7 @@ setup(	name='my_uptime',
 	                 'Programming Language :: Python :: 2',
 	                 'Programming Language :: Python :: 3',
                 	],
-      	provides=['streak_client ({0:s})'.format(__version__)], 
+      	provides=[], 
       	requires=[],
       	#message_extractors={},
       	#entry_points = {
