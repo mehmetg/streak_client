@@ -9,7 +9,7 @@ with open('streak_client/__init__.py') as inp:
           break
 
 setup(	name='streak_client',
-		version='0.01',
+		version='0.1',
 		description='simple flat client class for streak.com api with helper objects',
 		long_description = 'Streak API Client in Python',
 		url='http://github.com/mehmetg/streak_client',
