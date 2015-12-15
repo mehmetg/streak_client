@@ -22,7 +22,7 @@ Installation
 Known issues
 -------------
 
-    * Does not work with Python 3.x, yet.
+    * Python 3.x support is experimental.
     * Unittests are not complete (see dev status)
 
 -------------
