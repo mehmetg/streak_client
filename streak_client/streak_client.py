@@ -1,5 +1,5 @@
 import json, requests
-from streak_objects import *
+from .streak_objects import *
 
 import requests
 DEBUG = 0
@@ -55,7 +55,7 @@ class StreakClientBaseObject(object):
 						If not provided no data is sent
 			return 		code and req response dict (single or list)'''
 		if DEBUG:
-			print('uri', uri)
+			print(('uri', uri))
 
 		req_fp, content_type = self._get_req_fp(op)
 		
@@ -80,7 +80,7 @@ class StreakClientBaseObject(object):
 		return r.status_code, data
 	
 	def _form_encode(self, **kwargs):
-		out_string = '&'.join(str(k) + '=' + str(v) for k,v in kwargs.iteritems() if v is not None)
+		out_string = '&'.join(str(k) + '=' + str(v) for k,v in kwargs.items() if v is not None)
 		return out_string
 
 class StreakClient(StreakClientBaseObject):
@@ -132,7 +132,7 @@ class StreakClient(StreakClientBaseObject):
 		self.detail_level_suffix = '?detailLevel='
 
 		if DEBUG:
-			print(self.api_uri)
+			print((self.api_uri))
 
 	###
 	#Private Utility Methods
@@ -145,10 +145,10 @@ class StreakClient(StreakClientBaseObject):
 		'''
 		if DEBUG:
 			if req.status_code != requests.codes.ok:
-				print("code: {}".format(req.status_code))
-				print("response {}".format(req.json()))
-				print("req headers {}".format(req.request.headers))
-				print("req body {}".format(req.request.body))
+				print(("code: {}".format(req.status_code)))
+				print(("response {}".format(req.json())))
+				print(("req headers {}".format(req.request.headers)))
+				print(("req body {}".format(req.request.body)))
 
 	def _raise_unimplemented_error(self):
 		'''Exception helper for raising exceptions for unimplemented class members'''
@@ -472,7 +472,7 @@ class StreakClient(StreakClientBaseObject):
 		
 		#format is ambigious so we need to rely on user input
 		if stage_key:
-			data = data.values()
+			data = list(data.values())
 		
 		return code, data
 		

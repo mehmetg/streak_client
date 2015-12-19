@@ -91,7 +91,7 @@ class StreakClientPipelineAPITest(StreakClientTestBase):
 		self.assertEqual(len(data), 0, "Expected: 0, Read: {}".format(len(data)))
 	def test_get_delete_all_pipelines(self):
 		num_pl = 10
-		for i in xrange(num_pl):
+		for i in range(num_pl):
 			code, data = self.client.create_pipeline('my_name' + str(i), 'my_description' + str(i))
 			self.assertEqual(code, 200, "Create response is not OK. Code: {}".format(code))
 			self.assertTrue('name' in data and data['name'] == 'my_name' + str(i), 

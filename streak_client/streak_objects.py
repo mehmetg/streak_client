@@ -42,7 +42,7 @@ class StreakBaseObject(object):
 		Args:
 			rw 			if True only returns the read/write enabled object attributes
 		'''
-		return {k:v for (k,v) in self.attributes.iteritems() 
+		return {k:v for (k,v) in self.attributes.items() 
 				if (v is not None and (not rw or (k in self.rw_attr_keys)))}
 class StreakUser(StreakBaseObject):
 	disp_attr_keys =	[
